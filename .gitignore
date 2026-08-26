@@ -1,0 +1,19 @@
+# dependencias
+/node_modules
+
+# build de Next
+/.next
+/out
+
+# entorno (NUNCA subir secretos)
+.env
+.env.local
+.env*.local
+
+# logs y sistema
+npm-debug.log*
+.DS_Store
+
+# datos de prueba de inventario
+*.json.bak
+inventario_*.json
