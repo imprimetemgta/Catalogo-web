@@ -21,6 +21,7 @@ export default function CatalogoWhatsApp() {
   const [error, setError] = useState(null);
 
   const [carrito, setCarrito] = useState({}); // { codigo: cantidad }
+  const [imgFallo, setImgFallo] = useState({}); // imágenes que no cargaron
   const [marca, setMarca] = useState("Todas");
   const [busqueda, setBusqueda] = useState("");
   const [carritoAbierto, setCarritoAbierto] = useState(false);
@@ -217,9 +218,20 @@ export default function CatalogoWhatsApp() {
                     key={p.codigo}
                     className="flex flex-col overflow-hidden rounded-xl border border-stone-200 bg-white"
                   >
-                    {/* Placeholder de imagen (a futuro: <img src={p.imagen} />) */}
-                    <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 px-2 text-center text-xs font-medium text-stone-400">
-                      {p.marca || "Producto"}
+                    {/* Imagen desde Supabase Storage, con respaldo al placeholder */}
+                    <div className="relative flex aspect-[4/3] items-center justify-center bg-stone-100 px-2 text-center text-xs font-medium text-stone-400">
+                      <span>{p.marca || "Producto"}</span>
+                      {p.imagen && !imgFallo[p.codigo] && (
+                        <img
+                          src={p.imagen}
+                          alt={p.nombre}
+                          loading="lazy"
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onError={() =>
+                            setImgFallo((s) => ({ ...s, [p.codigo]: true }))
+                          }
+                        />
+                      )}
                     </div>
 
                     <div className="flex flex-1 flex-col p-3">

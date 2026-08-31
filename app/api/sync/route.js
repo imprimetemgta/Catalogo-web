@@ -6,7 +6,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const LOTE = 500;
-const RL_LIMITE = 20;
+// Margen holgado para la sincronización por lotes + reintentos. La protección
+// real sigue siendo el secreto (su entropía), no este número.
+const RL_LIMITE = 60;
 const RL_VENTANA_SEG = 60;
 
 const PRECIO_MAX = 9999999999.99;
@@ -70,8 +72,21 @@ export async function POST(request) {
     );
   }
 
-  // 3) Saneamiento + validación por fila
-  const marcaTiempo = new Date().toISOString();
+  // 3) Coordinación de corrida (para envíos por lotes).
+  //    El script manda X-Sync-Run (marca única de toda la corrida) en cada lote
+  //    y X-Sync-Final=1 en el último. Así todos los lotes comparten la misma
+  //    marca de tiempo y el ocultado de ausentes se hace UNA vez, al final.
+  //    Si no viene X-Sync-Run (ej. carga manual de un solo envío), se comporta
+  //    como antes: marca = ahora y barre en esta misma llamada.
+  const runHeader = request.headers.get("x-sync-run");
+  const modoLote = !!(runHeader && !Number.isNaN(Date.parse(runHeader)));
+  const marcaTiempo = modoLote
+    ? new Date(runHeader).toISOString()
+    : new Date().toISOString();
+  const finalFlag = (request.headers.get("x-sync-final") || "").toLowerCase();
+  const barrer = modoLote ? finalFlag === "1" || finalFlag === "true" : true;
+
+  // Saneamiento + validación por fila
   const porCodigo = new Map();
   const revisar = [];
 
@@ -145,25 +160,30 @@ export async function POST(request) {
     }
   }
 
-  // 5) Ocultar productos que ya no vinieron en este export
-  const { data: ocultados, error: errOcultar } = await sb
-    .from("productos")
-    .update({ publicaweb: false })
-    .lt("actualizado_en", marcaTiempo)
-    .eq("publicaweb", true)
-    .select("codigo");
-  if (errOcultar) {
-    return NextResponse.json(
-      { error: errOcultar.message, en: "ocultado" },
-      { status: 500 }
-    );
+  // 5) Ocultar productos ausentes — SOLO al final de la corrida.
+  let ocultados = [];
+  if (barrer) {
+    const { data, error: errOcultar } = await sb
+      .from("productos")
+      .update({ publicaweb: false })
+      .lt("actualizado_en", marcaTiempo)
+      .eq("publicaweb", true)
+      .select("codigo");
+    if (errOcultar) {
+      return NextResponse.json(
+        { error: errOcultar.message, en: "ocultado" },
+        { status: 500 }
+      );
+    }
+    ocultados = data ?? [];
   }
 
   return NextResponse.json({
     ok: true,
     recibidos: registros.length,
     sincronizados: filas.length,
-    ocultados: ocultados?.length ?? 0,
+    barrido: barrer,
+    ocultados: ocultados.length,
     revisar: revisar.length,
     detalle_revisar: revisar.slice(0, 50),
   });
