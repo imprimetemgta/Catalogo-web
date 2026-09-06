@@ -13,6 +13,7 @@ create table public.productos (
   referencia             text,                           -- REFERENCIA
   marca                  text,                           -- MARCA
   modelo                 text,                           -- MODELO
+  nombre_departamento    text,                           -- NOMBRE_DEPARTAMENTO (ver 05_departamento.sql para bases ya creadas)
   publicaweb             boolean not null default false, -- PUBLICAWEB (controla visibilidad)
   precio_usd             numeric(12,2) not null default 0, -- PRECIO_USD
   existencia_bruta       integer not null default 0,     -- EXISTENCIA_BRUTA (interno)
@@ -48,16 +49,17 @@ create policy "lectura_publica_productos_visibles"
 -- en el update NO se toca, para conservar la fecha de creación.
 --
 -- insert into public.productos
---   (codigo, descripcion, referencia, marca, modelo,
+--   (codigo, descripcion, referencia, marca, modelo, nombre_departamento,
 --    publicaweb, precio_usd,
 --    existencia_bruta, existencia_pedido, existencia_disponible, actualizado_en)
 -- values
---   ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+--   ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
 -- on conflict (codigo) do update set
 --   descripcion           = excluded.descripcion,
 --   referencia            = excluded.referencia,
 --   marca                 = excluded.marca,
 --   modelo                = excluded.modelo,
+--   nombre_departamento   = excluded.nombre_departamento,
 --   publicaweb            = excluded.publicaweb,
 --   precio_usd            = excluded.precio_usd,
 --   existencia_bruta      = excluded.existencia_bruta,

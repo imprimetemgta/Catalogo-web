@@ -41,9 +41,11 @@ catalogo-web/
 
 ### 1. Supabase — crear la base
 En Supabase → SQL Editor, corre en este orden:
-1. `db/01_schema.sql`      (tabla productos + RLS)
-2. `db/02_rate_limit.sql`  (tabla y función del rate limit)
-3. `db/03_constraints.sql` (restricciones CHECK)
+1. `db/01_schema.sql`       (tabla productos + RLS)
+2. `db/02_rate_limit.sql`   (tabla y función del rate limit)
+3. `db/03_constraints.sql`  (restricciones CHECK)
+4. `db/04_storage.sql`      (bucket de imágenes)
+5. `db/05_departamento.sql` (columna nombre_departamento; ya incluida en 01 para bases nuevas, pero corre limpio igual)
 
 ### 2. Variables de entorno
 Copia `.env.example` a `.env.local` para desarrollo local, y en Vercel ponlas en

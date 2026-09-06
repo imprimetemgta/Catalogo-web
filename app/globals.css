@@ -2,6 +2,155 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --grid-line: rgba(33, 59, 134, 0.08);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  color-scheme: light;
+}
+
 body {
-  background: #fafaf9;
+  background: #ffffff;
+  color: #14161f;
+  font-feature-settings: "cv05", "cv11";
+}
+
+/* Tabular numerals wherever prices, codes and quantities render, so a
+   column of digits lines up like a real price sheet instead of drifting
+   with proportional widths. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faint measured-instrument grid — the site's base background everywhere,
+   never directly under dense text (product cards stay opaque bg-white on
+   top of it, so legibility is untouched).
+   Tiling is default background-position (0 0 of the element's own box), so
+   it only reads as ONE continuous pattern when every element that carries
+   this class shares the same top-left origin as the page. That's why it
+   lives on the whole <header> (which starts at document y=0, same as the
+   page wrapper) and not on an inner div like the search bar's row — a
+   nested box starts its own tiling from its own offset top, which visibly
+   seams against the page's pattern right where that box ends. */
+.instrument-grid {
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+::selection {
+  background: #213b86;
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background: #213b86;
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 2px solid #1d9ad6;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+input:focus,
+button:focus,
+select:focus {
+  outline: none;
+}
+
+/* Scrollbars, themed instead of left as the browser default. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d7dae1;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b9bec9;
+}
+* {
+  scrollbar-color: #d7dae1 transparent;
+  scrollbar-width: thin;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes loop-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.loop-spin {
+  animation: loop-spin 1.6s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Cart drawer: the panel arrives tracing the loop's own curve — a bowed
+   leading edge that straightens as it settles — instead of a flat slide. */
+@keyframes drawer-arc-in {
+  from {
+    transform: translateX(100%);
+    border-top-left-radius: 999px;
+    border-bottom-left-radius: 999px;
+  }
+  to {
+    transform: translateX(0%);
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+  }
+}
+.drawer-arc-in {
+  animation: drawer-arc-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Filtros drawer: la misma curva, en espejo — entra por la izquierda y el
+   arco se traza sobre su borde derecho (el que va al frente del movimiento). */
+@keyframes drawer-arc-in-left {
+  from {
+    transform: translateX(-100%);
+    border-top-right-radius: 999px;
+    border-bottom-right-radius: 999px;
+  }
+  to {
+    transform: translateX(0%);
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+  }
+}
+.drawer-arc-in-left {
+  animation: drawer-arc-in-left 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.scrim-in {
+  animation: scrim-in 0.42s ease-out both;
 }

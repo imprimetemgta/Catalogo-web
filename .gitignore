@@ -17,3 +17,6 @@ npm-debug.log*
 # datos de prueba de inventario
 *.json.bak
 inventario_*.json
+
+/.impeccable
+PRODUCT.md

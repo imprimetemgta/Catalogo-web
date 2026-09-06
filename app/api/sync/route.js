@@ -126,6 +126,7 @@ export async function POST(request) {
       referencia: String(r.REFERENCIA ?? "").trim() || null,
       marca: String(r.MARCA ?? "").trim() || null,
       modelo: String(r.MODELO ?? "").trim() || null,
+      nombre_departamento: String(r.NOMBRE_DEPARTAMENTO ?? "").trim() || null,
       publicaweb: publica,
       precio_usd: precioLimpio,
       existencia_bruta: bruta,
