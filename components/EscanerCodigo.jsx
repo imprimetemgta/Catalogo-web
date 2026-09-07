@@ -70,6 +70,13 @@ export default function EscanerCodigo() {
     <div className="instrument-grid min-h-screen bg-paper text-ink">
       <header className="instrument-grid sticky top-0 z-20 border-b border-paper-line bg-paper">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Link href="/" className="h-8 shrink-0">
+            <img
+              src="/logo-imprimete-lockup.png"
+              alt="Imprimete C.A. — ¡Economía y calidad en impresión!"
+              className="h-full w-auto object-contain"
+            />
+          </Link>
           <Link
             href="/"
             className="flex items-center gap-1.5 rounded-md px-1 py-1 text-sm font-medium text-ink-muted transition hover:text-ink"
@@ -79,7 +86,7 @@ export default function EscanerCodigo() {
           </Link>
           <div className="ml-auto flex items-center gap-2 text-sm font-medium text-ink-muted">
             <ScanLine size={16} className="text-brand-cyan" />
-            Escáner de código
+            <span className="hidden sm:inline">Escáner de código</span>
           </div>
         </div>
       </header>
@@ -187,6 +194,10 @@ export default function EscanerCodigo() {
             </div>
           </div>
         )}
+
+        <p className="mt-10 text-center text-[11px] uppercase tracking-wide text-ink-faint">
+          Powered by APOFIS &amp; A2SOFTWAY
+        </p>
       </main>
     </div>
   );

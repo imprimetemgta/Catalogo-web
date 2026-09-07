@@ -23,6 +23,7 @@ async function productosDePrueba() {
       departamento: p.NOMBRE_DEPARTAMENTO || null,
       precio: Number(p.PRECIO_USD),
       existencia: p.EXISTENCIA_DISPONIBLE,
+      creadoEn: null, // inventario.json no trae fecha de alta; el filtro "Nuevo" no aplica en este modo de prueba
       imagen: null, // sin Supabase Storage local; el catálogo cae al respaldo
     }))
     .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
@@ -38,7 +39,7 @@ export async function GET() {
   const { data, error } = await sb
     .from("productos")
     .select(
-      "codigo, descripcion, marca, modelo, nombre_departamento, precio_usd, existencia_disponible"
+      "codigo, descripcion, marca, modelo, nombre_departamento, precio_usd, existencia_disponible, creado_en"
     )
     .eq("publicaweb", true)
     .order("descripcion");
@@ -62,6 +63,7 @@ export async function GET() {
     departamento: p.nombre_departamento,
     precio: Number(p.precio_usd),
     existencia: p.existencia_disponible,
+    creadoEn: p.creado_en,
     imagen: `${base}/storage/v1/object/public/${BUCKET}/${safe(p.codigo)}.jpg`,
   }));
 

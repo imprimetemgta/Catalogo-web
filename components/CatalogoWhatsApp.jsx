@@ -24,6 +24,17 @@ const WHATSAPP_NUMERO =
 // solo un borde de 3px (abajo en chip, a la izquierda en fila de filtro).
 const ACCENTOS = ["#E2057D", "#B58900", "#1D9AD6"];
 
+// Ventana del filtro "Nuevo": productos cuya fecha de alta (creado_en, fijada
+// una sola vez al insertarse — ver db/01_schema.sql) cae dentro del último
+// mes. Sin esa fecha (p.ej. el modo de prueba sin Supabase) el producto
+// simplemente no cuenta como nuevo, en vez de romper el filtro.
+const UN_MES_MS = 30 * 24 * 60 * 60 * 1000;
+const esNuevo = (creadoEn) => {
+  if (!creadoEn) return false;
+  const fecha = new Date(creadoEn).getTime();
+  return Number.isFinite(fecha) && Date.now() - fecha <= UN_MES_MS;
+};
+
 export default function CatalogoWhatsApp() {
   const { productos, cargando, error, tasaBcv, tasaFecha, cargarTasa } =
     useProductosYTasa();
@@ -32,6 +43,7 @@ export default function CatalogoWhatsApp() {
   const [imgFallo, setImgFallo] = useState({}); // imágenes que no cargaron
   const [departamento, setDepartamento] = useState("Todos");
   const [marca, setMarca] = useState("Todas");
+  const [soloNuevos, setSoloNuevos] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
@@ -58,17 +70,21 @@ export default function CatalogoWhatsApp() {
   const productosFiltrados = productos.filter((p) => {
     const coincideDepto = departamento === "Todos" || p.departamento === departamento;
     const coincideMarca = marca === "Todas" || p.marca === marca;
+    const coincideNuevo = !soloNuevos || esNuevo(p.creadoEn);
     const objetivo = `${p.nombre || ""} ${p.codigo || ""}`.toLowerCase();
     const coincideBusq = objetivo.includes(busqueda.toLowerCase());
-    return coincideDepto && coincideMarca && coincideBusq;
+    return coincideDepto && coincideMarca && coincideNuevo && coincideBusq;
   });
 
   const filtrosActivos =
-    (departamento !== "Todos" ? 1 : 0) + (marca !== "Todas" ? 1 : 0);
+    (departamento !== "Todos" ? 1 : 0) +
+    (marca !== "Todas" ? 1 : 0) +
+    (soloNuevos ? 1 : 0);
 
   const limpiarFiltros = () => {
     setDepartamento("Todos");
     setMarca("Todas");
+    setSoloNuevos(false);
   };
 
   const prod = (codigo) => productos.find((p) => p.codigo === codigo);
@@ -235,6 +251,8 @@ export default function CatalogoWhatsApp() {
               marcas={marcas}
               marca={marca}
               setMarca={setMarca}
+              soloNuevos={soloNuevos}
+              setSoloNuevos={setSoloNuevos}
               filtrosActivos={filtrosActivos}
               limpiarFiltros={limpiarFiltros}
             />
@@ -253,14 +271,13 @@ export default function CatalogoWhatsApp() {
             <p className="py-16 text-center text-sm text-brand-magentaDeep">{error}</p>
           )}
 
-          {/* Grid de productos — tarjetas grandes: 2 columnas en el celular,
-              3 en escritorio (`md+`), apoyadas por el espacio que liberó
-              quitar el panel fijo del carrito. La fila de precio/existencia
-              usa flex-wrap: en la tarjeta más angosta (2 columnas en un
-              celular chico) el estado pasa a su propia línea en vez de
-              recortarse. */}
+          {/* Grid de productos — tarjetas más compactas: 2 columnas en el
+              celular, creciendo hasta 5 en pantallas anchas, para que entren
+              más productos por vista. La fila de precio/existencia usa
+              flex-wrap: en la tarjeta más angosta (2 columnas en un celular
+              chico) el estado pasa a su propia línea en vez de recortarse. */}
           {!cargando && !error && (
-            <div className="grid grid-cols-2 gap-5 md:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {productosFiltrados.map((p) => {
                 const enCarrito = carrito[p.codigo] || 0;
                 const agotado = p.existencia <= 0;
@@ -269,8 +286,11 @@ export default function CatalogoWhatsApp() {
                     key={p.codigo}
                     className="flex flex-col overflow-hidden rounded-xl border border-paper-line bg-white shadow-card"
                   >
-                    {/* Imagen desde Supabase Storage, con respaldo al placeholder */}
-                    <div className="instrument-grid relative flex aspect-[4/3] items-center justify-center bg-paper-dim px-2 text-center text-sm font-medium uppercase tracking-wide text-ink-faint">
+                    {/* Imagen desde Supabase Storage, con respaldo al placeholder.
+                        Proporción más baja en celular (3/2) que en pantallas
+                        mayores (4/3): es lo que más recorta la altura total
+                        de la tarjeta sin achicar el texto hasta ilegible. */}
+                    <div className="instrument-grid relative flex aspect-[16/9] items-center justify-center bg-paper-dim px-2 text-center text-xs font-medium uppercase tracking-wide text-ink-faint sm:aspect-[4/3]">
                       <span>{p.marca || "Producto"}</span>
                       {p.imagen && !imgFallo[p.codigo] && (
                         <img
@@ -285,22 +305,22 @@ export default function CatalogoWhatsApp() {
                       )}
                     </div>
 
-                    <div className="flex flex-1 flex-col p-4 sm:p-5">
-                      <p className="tabular font-mono text-xs text-ink-faint">
+                    <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+                      <p className="tabular font-mono text-[11px] text-ink-faint">
                         {p.codigo}
                       </p>
-                      <h3 className="mt-1 text-base font-medium leading-snug text-ink sm:text-lg">
+                      <h3 className="mt-1 text-sm font-medium leading-snug text-ink sm:text-base">
                         {p.nombre}
                       </h3>
 
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                        <span className="tabular font-mono text-xl font-semibold text-ink sm:text-2xl">
+                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:mt-2">
+                        <span className="tabular font-mono text-lg font-semibold text-ink sm:text-xl">
                           ${p.precio.toFixed(2)}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <StockGauge existencia={p.existencia} size={30} />
+                        <div className="flex items-center gap-1.5">
+                          <StockGauge existencia={p.existencia} size={24} />
                           <span
-                            className={`tabular text-sm font-medium ${
+                            className={`tabular text-xs font-medium ${
                               agotado ? "text-ink-faint" : "text-ink-muted"
                             }`}
                           >
@@ -310,41 +330,41 @@ export default function CatalogoWhatsApp() {
                       </div>
 
                       {tasaBcv && (
-                        <p className="tabular font-mono mt-0.5 text-xs text-ink-faint">
+                        <p className="tabular font-mono mt-0.5 text-[11px] text-ink-faint">
                           {formatBs(p.precio * tasaBcv)}
                         </p>
                       )}
 
-                      <div className="mt-auto pt-4">
+                      <div className="mt-auto pt-2 sm:pt-3">
                         {enCarrito === 0 ? (
                           <button
                             disabled={agotado}
                             onClick={() => agregar(p.codigo, p.existencia)}
-                            className="w-full rounded-lg bg-brand-navy py-3 text-base font-medium text-white transition hover:bg-[#152a63] disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
+                            className="w-full rounded-lg bg-brand-navy py-2 text-sm font-medium text-white transition hover:bg-[#152a63] disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
                           >
                             Agregar
                           </button>
                         ) : (
-                          <div className="flex items-center justify-between rounded-lg bg-paper-dim p-1.5">
+                          <div className="flex items-center justify-between rounded-lg bg-paper-dim p-1">
                             <button
                               onClick={() =>
                                 cambiar(p.codigo, -1, p.existencia)
                               }
                               aria-label="Quitar una unidad"
-                              className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-ink shadow-sm"
+                              className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-ink shadow-sm"
                             >
-                              <Minus size={17} />
+                              <Minus size={15} />
                             </button>
-                            <span className="tabular text-base font-semibold">
+                            <span className="tabular text-sm font-semibold">
                               {enCarrito}
                             </span>
                             <button
                               onClick={() => cambiar(p.codigo, 1, p.existencia)}
                               disabled={enCarrito >= p.existencia}
                               aria-label="Agregar una unidad"
-                              className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-ink shadow-sm disabled:opacity-40"
+                              className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-ink shadow-sm disabled:opacity-40"
                             >
-                              <Plus size={17} />
+                              <Plus size={15} />
                             </button>
                           </div>
                         )}
@@ -436,6 +456,8 @@ export default function CatalogoWhatsApp() {
                 marcas={marcas}
                 marca={marca}
                 setMarca={setMarca}
+                soloNuevos={soloNuevos}
+                setSoloNuevos={setSoloNuevos}
                 filtrosActivos={filtrosActivos}
                 limpiarFiltros={limpiarFiltros}
               />
@@ -463,6 +485,8 @@ function FiltrosPanel({
   marcas,
   marca,
   setMarca,
+  soloNuevos,
+  setSoloNuevos,
   filtrosActivos,
   limpiarFiltros,
 }) {
@@ -481,6 +505,12 @@ function FiltrosPanel({
           </button>
         )}
       </div>
+      <FiltroToggle
+        titulo="Novedades"
+        etiqueta="Nuevo (agregado el último mes)"
+        activo={soloNuevos}
+        onCambiar={setSoloNuevos}
+      />
       <FiltroSeccion
         titulo="Departamento"
         etiquetaTodos="Todos los departamentos"
@@ -497,6 +527,29 @@ function FiltrosPanel({
         valor={marca}
         onCambiar={setMarca}
       />
+    </div>
+  );
+}
+
+// Filtro de un solo interruptor (a diferencia de FiltroSeccion, que es de
+// selección única entre varias opciones) — mismo lenguaje visual: acento del
+// aro como borde izquierdo cuando está activo, nunca relleno.
+function FiltroToggle({ titulo, etiqueta, activo, onCambiar }) {
+  return (
+    <div>
+      <p className="mb-1.5 px-2 text-xs font-medium text-ink-muted">{titulo}</p>
+      <button
+        onClick={() => onCambiar(!activo)}
+        aria-pressed={activo}
+        style={activo ? { borderLeftColor: ACCENTOS[0] } : undefined}
+        className={`w-full rounded-md border-l-[3px] border-l-transparent px-2 py-1.5 text-left text-sm font-medium transition ${
+          activo
+            ? "bg-paper-dim text-ink"
+            : "text-ink-muted hover:bg-paper-dim/60 hover:text-ink"
+        }`}
+      >
+        {etiqueta}
+      </button>
     </div>
   );
 }
@@ -653,6 +706,9 @@ function CarritoPanel({
             </p>
           </>
         )}
+        <p className="mt-3 text-center text-[11px] uppercase tracking-wide text-ink-faint">
+          Powered by APOFIS &amp; A2SOFTWAY
+        </p>
       </div>
     </div>
   );
