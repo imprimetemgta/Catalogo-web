@@ -1,12 +1,13 @@
 // Crea o actualiza un usuario de la página de reposición.
-// Uso:  node scripts/crear_usuario_reposicion.mjs <usuario>
+// Uso:  npm run crear-usuario -- <usuario>
 // La clave se lee por stdin (no como argumento, para que no quede en el
-// historial de la terminal): escribirla cuando la pida, o enviarla por pipe
-//   echo mi-clave-larga | node scripts/crear_usuario_reposicion.mjs ana
+// historial de la terminal): escribirla cuando la pida. También acepta stdin
+// redirigido, pero en Windows `echo` agrega un espacio final a la clave.
 // Solo imprime el SQL; hay que pegarlo en Supabase → SQL Editor.
 import { hashClave } from "../lib/reposicion/auth.js";
 
 const MIN_CLAVE = 10;
+const MAX_CLAVE = 200; // mismo tope que LARGO_MAX de la ruta de login
 const MAX_USUARIO = 200;
 
 function salir(msg) {
@@ -33,6 +34,8 @@ function leerClave() {
     stdin.resume();
     stdin.setEncoding("utf8");
     const alRecibir = (tecla) => {
+      // Flechas, Supr, F1... llegan como secuencias que empiezan con ESC: se ignoran.
+      if (tecla.startsWith("\u001b")) return;
       for (const c of tecla) {
         if (c === "\r" || c === "\n" || c === "\u0004") {
           stdin.setRawMode(false);
@@ -43,7 +46,7 @@ function leerClave() {
         }
         if (c === "\u0003") process.exit(130); // Ctrl+C
         if (c === "\u007f" || c === "\b") clave = clave.slice(0, -1);
-        else clave += c;
+        else if (c >= " ") clave += c; // otros caracteres de control se ignoran
       }
     };
     stdin.on("data", alRecibir);
@@ -51,11 +54,12 @@ function leerClave() {
 }
 
 const usuario = (process.argv[2] ?? "").trim();
-if (!usuario) salir("Uso: node scripts/crear_usuario_reposicion.mjs <usuario>");
+if (!usuario) salir("Uso: npm run crear-usuario -- <usuario>");
 if (usuario.length > MAX_USUARIO) salir(`El usuario no puede pasar de ${MAX_USUARIO} caracteres.`);
 
 const clave = await leerClave();
 if (clave.length < MIN_CLAVE) salir(`La clave debe tener al menos ${MIN_CLAVE} caracteres.`);
+if (clave.length > MAX_CLAVE) salir(`La clave no puede pasar de ${MAX_CLAVE} caracteres.`);
 
 const hash = await hashClave(clave);
 // Comillas simples duplicadas para que el literal SQL sea válido.
