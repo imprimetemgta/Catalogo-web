@@ -81,3 +81,9 @@ test("token firmado con payload sin u o exp válidos da null", async () => {
   assert.equal(verificarToken(firmar("no-json"), "s", 0), null);
   assert.deepEqual(verificarToken(firmar({ u: "a", exp: 10 }), "s", 0), { usuario: "a" });
 });
+
+test("verificarClave rechaza N=2^18 (por encima del tope)", async () => {
+  const h = (await hashClave("x")).split("$");
+  h[1] = String(2 ** 18);
+  assert.equal(await verificarClave("x", h.join("$")), false);
+});
