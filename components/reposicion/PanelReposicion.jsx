@@ -179,7 +179,7 @@ export default function PanelReposicion({ base, usuario }) {
 
             {/* Desglose por departamento (solo los que tienen algo que revisar). */}
             {totales.porDepartamento.length > 0 && (
-              <details open className="mt-3 rounded-md border border-paper-line bg-white">
+              <details className="mt-3 rounded-md border border-paper-line bg-white">
                 <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink-faint">
                   Por departamento ({totales.porDepartamento.length})
                 </summary>
