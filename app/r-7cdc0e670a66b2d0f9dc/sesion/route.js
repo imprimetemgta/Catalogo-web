@@ -79,7 +79,14 @@ export async function POST(request) {
     return responder({ error: "Servicio no disponible" }, 503);
   }
 
-  // 3) Cuerpo { usuario, clave }
+  // 3) Solo JSON: un formulario de otro sitio no puede mandar este
+  //    content-type sin preflight CORS, así se evita el login CSRF.
+  const tipo = (request.headers.get("content-type") || "").toLowerCase();
+  if (!tipo.startsWith("application/json")) {
+    return responder({ error: "Se espera JSON" }, 415);
+  }
+
+  // 4) Cuerpo { usuario, clave }
   let cuerpo;
   try {
     cuerpo = await request.json();
@@ -91,7 +98,7 @@ export async function POST(request) {
   const clave = cuerpo?.clave;
   if (!textoValido(usuario) || !textoValido(clave)) return noAutorizado();
 
-  // 4) Verificación. Si el usuario no existe, hash es null y verificarClave
+  // 5) Verificación. Si el usuario no existe, hash es null y verificarClave
   //    corre un scrypt señuelo para que la respuesta tarde lo mismo.
   let hash;
   try {
@@ -102,7 +109,7 @@ export async function POST(request) {
   }
   if (!(await verificarClave(clave, hash))) return noAutorizado();
 
-  // 5) Sesión en cookie firmada
+  // 6) Sesión en cookie firmada
   const res = responder({ ok: true }, 200);
   res.cookies.set(
     COOKIE_SESION,
