@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { dentroDeLimite } from "@/lib/rateLimit";
+import { existenciaONull } from "@/lib/existencia";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -99,8 +100,8 @@ export async function POST(request) {
 
     const descripcion = String(r.DESCRIPCION ?? "").trim();
     const precioNum = aNum(r.PRECIO_USD);
-    const bruta = clamp(aInt(r.EXISTENCIA_BRUTA), 0, EXIST_MAX);
-    const pedido = clamp(aInt(r.EXISTENCIA_PEDIDO), 0, EXIST_MAX);
+    const bruta = existenciaONull(r.EXISTENCIA_BRUTA, EXIST_MAX);
+    const pedido = existenciaONull(r.EXISTENCIA_PEDIDO, EXIST_MAX);
     const disponible = clamp(aInt(r.EXISTENCIA_DISPONIBLE), 0, EXIST_MAX);
 
     const problemas = [];
