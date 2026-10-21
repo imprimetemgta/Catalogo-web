@@ -130,3 +130,15 @@ test("sin datos de ventas, los filtros nuevos no incluyen nada", () => {
     assert.deepEqual(filtrarYOrdenar(fixture, { filtro }), []);
   }
 });
+
+test("u30 <= 0 pero u7 > 0 (neto): sin_movimiento lo incluye, mas_vendidos con periodo 7 tambien", () => {
+  const p = { ...base, codigo: "Q", nombre: "Neto", departamento: "TINTAS", precio: 1, bruta: 20, disponible: 8, ventas: vt(2, 0, -1) };
+  assert.deepEqual(filtrarYOrdenar([p], { filtro: "sin_movimiento" }).map((x) => x.codigo), ["Q"]);
+  assert.deepEqual(filtrarYOrdenar([p], { filtro: "mas_vendidos", periodo: 7 }).map((x) => x.codigo), ["Q"]);
+  assert.deepEqual(filtrarYOrdenar([p], { filtro: "mas_vendidos", periodo: 30 }), []);
+});
+
+test("sin_movimiento no incluye productos con disponible <= 0", () => {
+  const ps = [0, -3].map((d, i) => ({ ...base, codigo: "Z" + i, nombre: "Z" + i, departamento: "TINTAS", precio: 1, bruta: 20, disponible: d, ventas: vt(0, 0, 0) }));
+  assert.deepEqual(filtrarYOrdenar(ps, { filtro: "sin_movimiento" }), []);
+});

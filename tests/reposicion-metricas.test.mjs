@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { filtrarYOrdenar } from "../lib/reposicion/clasificar.js";
 import { totalesPorCodigo, metricasDe, diasDesde } from "../lib/reposicion/metricas.js";
 
 const HASTA = "2026-10-21";
+const base = { referencia: "", marca: "", modelo: "", pedido: 0, creadoEn: null, imagen: null, nombre: "X", departamento: null, precio: 1, codigo: "P" };
 const v = (u30, extra = {}) => ({ u7: 0, u15: 0, u30, ultima: "2026-10-21", ...extra });
 
 test("totalesPorCodigo suma por ventana e ignora filas fuera de 30 días", () => {
@@ -64,6 +66,21 @@ test("metricasDe: unidades decimales", () => {
   const m = metricasDe({ disponible: 3, ventas: v(1.5) }, 30);
   assert.equal(m.alcanzaDias, 60);
   assert.equal(m.sugerido, 2);
+});
+
+test("metricasDe: redondeo de coma flotante (p7, v9, d9 alcanza 7)", () => {
+  const m = metricasDe({ disponible: 9, ventas: { u7: 9, u15: 9, u30: 9, ultima: "2026-10-21" } }, 7);
+  assert.equal(m.alcanzaDias, 7);
+  const p = { ...base, bruta: 20, disponible: 9, ventas: { u7: 9, u15: 9, u30: 9, ultima: "2026-10-21" } };
+  assert.equal(filtrarYOrdenar([p], { filtro: "reponer_ya", periodo: 7 }).length, 0);
+});
+
+test("metricasDe: sugerido sin error de coma flotante", () => {
+  const sug = (periodo, u) =>
+    metricasDe({ disponible: 0, ventas: { u7: u, u15: u, u30: u, ultima: "2026-10-21" } }, periodo).sugerido;
+  assert.equal(sug(30, 31), 31);
+  assert.equal(sug(15, 31), 62);
+  assert.equal(sug(7, 4.9), 21);
 });
 
 test("metricasDe: sin datos de ventas devuelve null", () => {
