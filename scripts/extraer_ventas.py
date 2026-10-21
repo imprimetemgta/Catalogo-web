@@ -44,6 +44,8 @@ DIAS_VENTANA = 30          # hasta - 29 dias .. hasta, ambos incluidos
 TIPO_VENTA = 11
 TIPO_DEVOLUCION = 12
 TIMEOUT_HTTP = 60          # segundos
+TIMEOUT_CONEXION = 30      # segundos para conectar con A2
+TIMEOUT_CONSULTA = 120     # segundos maximos de la consulta
 
 SQL_VENTAS = (
     "SELECT FDI_CODIGO, FDI_FECHAOPERACION, FDI_TIPOOPERACION, SUM(FDI_CANTIDAD) "
@@ -122,7 +124,9 @@ def cadena_conexion(config):
 
 def get_conn(config):
     import pyodbc  # aqui y no arriba: las pruebas corren sin el driver
-    return pyodbc.connect(cadena_conexion(config))
+    conn = pyodbc.connect(cadena_conexion(config), timeout=TIMEOUT_CONEXION)
+    conn.timeout = TIMEOUT_CONSULTA   # el driver DBISAM puede ignorarlo; ver docs (tiempo maximo de la tarea)
+    return conn
 
 
 def leer_ventas(conn, hasta):
@@ -231,7 +235,11 @@ def main():
         logger.error("Revisa que Python sea de 32 bits, que el driver DBISAM 4 este instalado y que 'carpeta_datos' apunte a la carpeta Data de la empresa.")
         sys.exit(1)
 
-    filas = agregar(filas_sql, hasta)
+    try:
+        filas = agregar(filas_sql, hasta)
+    except Exception as e:
+        logger.error(f"Error procesando las ventas leidas de A2: {e}")
+        sys.exit(1)
     logger.info(f"Filas de A2: {len(filas_sql)} -> filas netas por producto y dia: {len(filas)}")
     if not filas:
         logger.warning("No hay ventas en los ultimos 30 dias. No se envia nada.")

@@ -81,6 +81,7 @@ export default function PanelReposicion({ base, usuario }) {
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState("nombre");
   const [ventas, setVentas] = useState(null);
+  const [ventasError, setVentasError] = useState(false);
   const [periodo, setPeriodo] = useState(PERIODO_PREDETERMINADO);
 
   const cargar = useCallback(async () => {
@@ -94,6 +95,7 @@ export default function PanelReposicion({ base, usuario }) {
       const cuerpo = await res.json();
       setProductos(cuerpo.productos ?? []);
       setVentas(cuerpo.ventas ?? null);
+      setVentasError(cuerpo.ventasError === true);
       // Sin ventas, un filtro u orden de ventas ya no existe: volver a los de stock.
       if (!cuerpo.ventas) {
         setFiltro((f) => (FILTROS_VENTAS.includes(f) ? "todos" : f));
@@ -221,7 +223,9 @@ export default function PanelReposicion({ base, usuario }) {
               </div>
             ) : (
               <p className="mb-3 rounded-md border border-paper-line bg-white px-3 py-2 text-xs text-ink-muted">
-                Aún no hay ventas cargadas
+                {ventasError
+                  ? "No se pudieron leer las ventas; intenta más tarde"
+                  : "Aún no hay ventas cargadas"}
               </p>
             )}
 

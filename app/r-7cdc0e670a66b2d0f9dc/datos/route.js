@@ -22,15 +22,18 @@ export async function GET() {
     const productos = await obtenerProductosReposicion();
     // Si las ventas fallan, la página de stock sigue funcionando sin ellas.
     let ventas = null;
+    let ventasError = false;
     try {
       ventas = await obtenerVentasReposicion();
     } catch (e) {
       console.error("ventas reposicion:", e.message);
+      ventasError = true;
     }
     return NextResponse.json(
       {
         productos: unirVentas(productos, ventas?.totales ?? null),
         ventas: ventas ? { hasta: ventas.hasta } : null,
+        ventasError,
       },
       { headers: SIN_CACHE }
     );
