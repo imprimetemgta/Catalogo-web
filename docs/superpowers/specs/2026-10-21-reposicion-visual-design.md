@@ -39,6 +39,7 @@ De izquierda a derecha:
     números van en negrita; cuando hay problema, en el color de la urgencia (magenta o
     ámbar). Si el disponible es 0 por "agotado" o "sin existencias", la primera parte dice
     la palabra ("Agotado", "Sin existencias") en vez de `disp 0`.
+  - Cuando se muestra la palabra ("Agotado" / "Sin existencias") se omite la parte `alcanza N d`, que ahí siempre es 0 y partía la línea (*decisión de Claude tras probar en el navegador*).
   - A CONSULTAR: `A CONSULTAR · vend N`.
   - Sin datos de ventas: solo la parte de stock (`disp N`, o la palabra).
 - **Derecha, grande:** el número a **pedir** (el "sugerido" de la fase 2, sin cambios en
@@ -58,7 +59,7 @@ De izquierda a derecha:
 En este orden, debajo del encabezado actual (logo, "Reposición", Salir), que no cambia:
 
 1. **Píldoras de color con su número**, que **reemplazan a la vez las tarjetas de cifras y
-   los botones de filtro**. Se acomodan en varias líneas (no hay scroll lateral). Orden:
+   los botones de filtro**. Van en **una sola fila con scroll lateral**, sin barra visible y con un degradado en el borde derecho que avisa que hay más; la píldora activa se desplaza a la vista (*decisión de Claude tras probar en el navegador*: en varias líneas ocupaban cuatro y dejaban solo 5 filas de producto visibles). Orden:
    Reponer ya, Agotados, Sin existencias, Stock bajo, Más vendidos, Sin movimiento,
    A consultar, Todos. Colores: magenta para las tres primeras, ámbar para Stock bajo, azul
    para Más vendidos, gris para el resto. La píldora activa se marca con un borde del mismo

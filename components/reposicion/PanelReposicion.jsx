@@ -81,6 +81,7 @@ export default function PanelReposicion({ base, usuario }) {
   const [periodo, setPeriodo] = useState(PERIODO_PREDETERMINADO);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const botonFiltros = useRef(null);
+  const pildoraActiva = useRef(null);
   const primeraCarga = useRef(true);
 
   const cargar = useCallback(async () => {
@@ -153,6 +154,11 @@ export default function PanelReposicion({ base, usuario }) {
   const alternarDepto = (d) => setDepartamento((actual) => (actual === d ? null : d));
   const cerrarPanel = useCallback(() => setPanelAbierto(false), []);
 
+  // La píldora activa siempre queda a la vista dentro de la fila con scroll lateral.
+  useEffect(() => {
+    pildoraActiva.current?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [filtro, productos]);
+
   // Punto en "Filtros": algo distinto del arranque quedó escondido en el panel.
   const ordenBase = hayVentas ? INICIAL.conVentas.orden : INICIAL.sinVentas.orden;
   const hayFiltrosActivos = departamento != null || filtro === "nuevos" || orden !== ordenBase;
@@ -202,15 +208,17 @@ export default function PanelReposicion({ base, usuario }) {
         {productos && !error && (
           <>
             {/* Píldoras: cada una es un filtro; tocar la activa vuelve a "todos". */}
-            <div className="flex flex-wrap gap-2">
+            <div className="relative -mx-4">
+            <div className="flex flex-nowrap gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {pildorasVisibles.map(({ filtro: f, tono }) => {
                 const activa = filtro === f;
                 return (
                   <button
                     key={f}
+                    ref={activa ? pildoraActiva : null}
                     onClick={() => tocarCifra(f)}
                     aria-pressed={activa}
-                    className={`flex min-h-10 items-center gap-1.5 rounded-full border-2 px-3 text-xs transition ${TONOS[tono].base} ${
+                    className={`flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 px-3 text-xs transition ${TONOS[tono].base} ${
                       activa ? TONOS[tono].borde : "border-transparent"
                     }`}
                   >
@@ -221,6 +229,9 @@ export default function PanelReposicion({ base, usuario }) {
                   </button>
                 );
               })}
+            </div>
+            {/* Degradado de borde: avisa que hay más píldoras a la derecha. */}
+            <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-paper to-transparent" />
             </div>
 
             {/* Buscador, periodo (solo con ventas) y panel de filtros. */}

@@ -42,6 +42,9 @@ export default function FilaProducto({ p, periodo }) {
   else if (estado === "sin_existencias") stock = <b>Sin existencias</b>;
   else stock = <>disp <b>{p.disponible}</b></>;
 
+  // Con la palabra de stock el "alcanza" sería siempre 0: se omite para que la línea no se parta.
+  const palabraStock = estado === "agotado" || estado === "sin_existencias";
+
   // Caja "pedir": siempre que la página tenga ventas (número, "?" o "—").
   let pedir = "—";
   let cajaClase = "bg-paper-dim text-ink-muted";
@@ -89,7 +92,7 @@ export default function FilaProducto({ p, periodo }) {
             <span className="block truncate text-sm font-semibold">{p.nombre}</span>
             <span className={`tabular flex flex-wrap gap-x-1.5 text-xs leading-snug ${color}`}>
               <span className="whitespace-nowrap">{stock}</span>
-              {conVentas && !sinDato && (
+              {conVentas && !sinDato && !palabraStock && (
                 <span className="whitespace-nowrap">
                   · alcanza <b>{m?.alcanzaDias == null ? "—" : `${m.alcanzaDias} d`}</b>
                 </span>
