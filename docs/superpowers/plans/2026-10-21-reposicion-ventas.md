@@ -123,7 +123,7 @@ Reglas de `validarCargaVentas`:
   - Con `disponible: 0` y el periodo 7: `alcanzaDias = 0` y `sugerido = 30`.
   - Con `disponible: 100` y `u30: 3`: `sugerido = null`, porque `max(5, 3) − 100 < 0`.
   - Con `disponible: 1` y `u30: 1`: `sugerido = 4`, porque `max(5, 1) − 1`.
-  - Con unidades decimales (`u30: 1.5`, `disponible: 3`): `alcanzaDias = 60` y `sugerido = 3`.
+  - Con unidades decimales (`u30: 1.5`, `disponible: 3`): `alcanzaDias = 60` y `sugerido = max(5, ceil(1.5)) − 3 = 2`.
   - `metricasDe` con `ventas: null` devuelve `null`.
   - `diasDesde("2026-10-18", "2026-10-21") === 3`.
 - [ ] **Step 2: Write the failing tests** en `tests/reposicion-clasificar.test.mjs`. Usar un set de 5 productos: uno que vende rápido con poco stock, uno que vende lento con mucho stock, uno sin ventas con stock, uno a_consultar con ventas y uno con `ventas: null`. Verificar:
