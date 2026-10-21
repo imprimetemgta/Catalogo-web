@@ -57,7 +57,7 @@ const TONOS = {
   magenta: { base: "bg-brand-magenta/10 text-brand-magentaDeep", borde: "border-brand-magenta" },
   ambar: { base: "bg-brand-amber/15 text-brand-amberDeep", borde: "border-brand-amber" },
   azul: { base: "bg-brand-navy/10 text-brand-navy", borde: "border-brand-navy" },
-  gris: { base: "bg-paper-dim text-ink-muted", borde: "border-ink-faint" },
+  gris: { base: "bg-paper-dim text-ink-muted", borde: "border-ink-muted" },
 };
 
 const hoyLocal = () => {
@@ -96,7 +96,12 @@ export default function PanelReposicion({ base, usuario }) {
       setProductos(cuerpo.productos ?? []);
       setVentas(cuerpo.ventas ?? null);
       setVentasError(cuerpo.ventasError === true);
-      if (!cuerpo.ventas) {
+      if (cuerpo.ventas) {
+        // Primera carga con ventas: si no hay nada que reponer ya, no abrir en una lista vacía.
+        if (primeraCarga.current && resumen(cuerpo.productos ?? [], Date.now(), PERIODO_PREDETERMINADO).reponer_ya === 0) {
+          setFiltro("todos");
+        }
+      } else {
         if (primeraCarga.current) {
           // Aún están los valores de apertura con ventas: pasar a los de sin ventas completos.
           setFiltro(INICIAL.sinVentas.filtro);
@@ -145,11 +150,18 @@ export default function PanelReposicion({ base, usuario }) {
   );
 
   // Elegir "Más vendidos" como filtro también ordena por ventas.
+  // Al salir de él, si el orden sigue siendo por ventas, vuelve el orden predeterminado.
   const elegirFiltro = (f) => {
     setFiltro(f);
     if (f === "mas_vendidos") setOrden("vendidos_desc");
+    else if (filtro === "mas_vendidos") setOrden((o) => (o === "vendidos_desc" ? INICIAL.conVentas.orden : o));
   };
-  const tocarCifra = (f) => (filtro === f ? setFiltro("todos") : elegirFiltro(f));
+  const tocarCifra = (f) => (filtro === f ? elegirFiltro("todos") : elegirFiltro(f));
+  const verTodos = () => {
+    setFiltro("todos");
+    setDepartamento(null);
+    setBusqueda("");
+  };
   const alternarNuevos = () => setFiltro((actual) => (actual === "nuevos" ? "todos" : "nuevos"));
   const alternarDepto = (d) => setDepartamento((actual) => (actual === d ? null : d));
   const cerrarPanel = useCallback(() => setPanelAbierto(false), []);
@@ -219,7 +231,7 @@ export default function PanelReposicion({ base, usuario }) {
                     onClick={() => tocarCifra(f)}
                     aria-pressed={activa}
                     className={`flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 px-3 text-xs transition ${TONOS[tono].base} ${
-                      activa ? TONOS[tono].borde : "border-transparent"
+                      activa ? `${TONOS[tono].borde} font-semibold` : "border-transparent"
                     }`}
                   >
                     <span className="font-medium">{NOMBRE_FILTRO[f]}</span>
@@ -245,7 +257,7 @@ export default function PanelReposicion({ base, usuario }) {
                   type="search"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar producto"
+                  placeholder="Buscar nombre o código"
                   aria-label="Buscar"
                   className="min-h-10 w-full rounded-md border border-paper-line bg-white py-2 pl-9 pr-3 text-sm text-ink outline-none transition focus:border-brand-navy"
                 />
@@ -330,6 +342,12 @@ export default function PanelReposicion({ base, usuario }) {
               <div className="mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-paper-line bg-white py-12 text-center text-ink-faint">
                 <PackageX size={28} />
                 <p className="text-sm">No hay productos con este filtro</p>
+                <button
+                  onClick={verTodos}
+                  className="min-h-10 rounded-md border border-paper-line bg-white px-4 text-sm font-medium text-ink transition hover:border-ink-faint"
+                >
+                  Ver todos
+                </button>
               </div>
             ) : (
               <ul className="mt-2 divide-y divide-paper-line overflow-hidden rounded-lg border border-paper-line bg-white">

@@ -39,7 +39,7 @@ De izquierda a derecha:
     números van en negrita; cuando hay problema, en el color de la urgencia (magenta o
     ámbar). Si el disponible es 0 por "agotado" o "sin existencias", la primera parte dice
     la palabra ("Agotado", "Sin existencias") en vez de `disp 0`.
-  - Cuando se muestra la palabra ("Agotado" / "Sin existencias") se omite la parte `alcanza N d`, que ahí siempre es 0 y partía la línea (*decisión de Claude tras probar en el navegador*).
+  - Cuando se muestra la palabra ("Agotado" / "Sin existencias") se omite la parte `alcanza N d`, que ahí es 0 o no aplica y partía la línea (*decisión de Claude tras probar en el navegador*).
   - A CONSULTAR: `A CONSULTAR · vend N`.
   - Sin datos de ventas: solo la parte de stock (`disp N`, o la palabra).
 - **Derecha, grande:** el número a **pedir** (el "sugerido" de la fase 2, sin cambios en
@@ -94,6 +94,7 @@ En este orden, debajo del encabezado actual (logo, "Reposición", Salir), que no
   existencia". Es lo más parecido a "lo urgente primero" que se puede sin ventas.
 - Si al cargar llegan sin ventas y el filtro o el orden actual son de ventas, se vuelve a
   los de sin ventas (ya existe esa lógica; solo cambian los valores de destino).
+- **Apertura sin nada que reponer** (*decisión de Claude tras la revisión final*): si hay ventas pero "Reponer ya" tiene 0 en la primera carga, abre en "Todos" con el mismo orden "Se acaba antes", para no mostrar una lista vacía. El estado vacío tiene un botón "Ver todos" (filtro Todos, sin departamento, sin búsqueda).
 - El orden "Se acaba antes" desempata por **más vendidos primero** y después por nombre
   (*decisión de Claude*): entre dos productos que se acaban el mismo día, primero el que
   más se vende. En el boceto se mostró como "Más urgentes"; se mantiene el nombre actual

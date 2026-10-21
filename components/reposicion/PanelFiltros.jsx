@@ -133,7 +133,7 @@ export default function PanelFiltros({
                     onClick={() => filtrable && onDepto(d.departamento)}
                     disabled={!filtrable}
                     aria-pressed={activo}
-                    className={`tabular grid w-full grid-cols-[1fr_repeat(4,2.75rem)] items-center gap-1 border-l-[3px] px-3 py-1.5 text-left font-mono text-xs transition ${
+                    className={`tabular grid w-full grid-cols-[1fr_repeat(4,2.75rem)] min-h-10 items-center gap-1 border-l-[3px] px-3 py-1.5 text-left font-mono text-xs transition ${
                       activo ? "border-l-brand-navy bg-paper-dim" : "border-l-transparent hover:bg-paper-dim"
                     }`}
                   >
