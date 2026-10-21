@@ -86,3 +86,47 @@ test("esNuevo: 30 días", () => {
   assert.equal(esNuevo(new Date(ahora - 31 * 86400000).toISOString(), ahora), false);
   assert.equal(esNuevo(null, ahora), false);
 });
+
+// --- Fase 2: métricas de ventas ---
+const vt = (u7, u15, u30) => ({ u7, u15, u30, ultima: "2026-10-21" });
+const conVentas = [
+  { ...base, codigo: "R", nombre: "Rapido", departamento: "TINTAS", precio: 1, bruta: 20, disponible: 6, ventas: vt(3, 15, 30) },
+  { ...base, codigo: "S", nombre: "Lento", departamento: "TINTAS", precio: 1, bruta: 60, disponible: 50, ventas: vt(0, 1, 3) },
+  { ...base, codigo: "N", nombre: "Quieto", departamento: "TINTAS", precio: 1, bruta: 20, disponible: 8, ventas: vt(0, 0, 0) },
+  { ...base, codigo: "C", nombre: "Consultar", departamento: "TINTAS", precio: 1, bruta: null, disponible: 0, ventas: vt(10, 20, 100) },
+  { ...base, codigo: "X", nombre: "Sinventas", departamento: "TINTAS", precio: 1, bruta: 20, disponible: 9, ventas: null },
+];
+const codigos = (opts) => filtrarYOrdenar(conVentas, opts).map((p) => p.codigo);
+
+test("filtros de ventas", () => {
+  assert.deepEqual(codigos({ filtro: "mas_vendidos" }), ["C", "S", "R"]); // por nombre
+  assert.deepEqual(codigos({ filtro: "reponer_ya" }), ["R"]);
+  assert.deepEqual(codigos({ filtro: "sin_movimiento" }), ["N"]);
+});
+
+test("reponer_ya depende del periodo", () => {
+  assert.deepEqual(codigos({ filtro: "reponer_ya", periodo: 30 }), ["R"]);
+  assert.deepEqual(codigos({ filtro: "reponer_ya", periodo: 7 }), []);
+});
+
+test("orden vendidos_desc y alcanza_asc", () => {
+  assert.deepEqual(codigos({ orden: "vendidos_desc" }), ["C", "R", "S", "N", "X"]);
+  assert.deepEqual(codigos({ orden: "alcanza_asc" }), ["C", "R", "S", "N", "X"]);
+  // periodo 7: C 10, R 3 y el resto 0 (empate por nombre: Lento, Quieto, Sinventas)
+  assert.deepEqual(codigos({ orden: "vendidos_desc", periodo: 7 }), ["C", "R", "S", "N", "X"]);
+});
+
+test("resumen suma conteos de ventas", () => {
+  const r = resumen(conVentas);
+  assert.equal(r.mas_vendidos, 3);
+  assert.equal(r.reponer_ya, 1);
+  assert.equal(r.sin_movimiento, 1);
+  assert.equal(resumen(conVentas, Date.now(), 7).reponer_ya, 0);
+  assert.equal(resumen(fixture).mas_vendidos, 0);
+});
+
+test("sin datos de ventas, los filtros nuevos no incluyen nada", () => {
+  for (const filtro of ["mas_vendidos", "reponer_ya", "sin_movimiento"]) {
+    assert.deepEqual(filtrarYOrdenar(fixture, { filtro }), []);
+  }
+});
