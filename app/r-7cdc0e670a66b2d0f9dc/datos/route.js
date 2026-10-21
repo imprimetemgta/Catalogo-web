@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { unirVentas } from "@/lib/reposicion/datos";
 import {
   obtenerProductosReposicion,
+  obtenerVentasReposicion,
   sesionActual,
 } from "@/lib/reposicion/servidor";
 
@@ -18,7 +20,20 @@ export async function GET() {
   }
   try {
     const productos = await obtenerProductosReposicion();
-    return NextResponse.json({ productos }, { headers: SIN_CACHE });
+    // Si las ventas fallan, la página de stock sigue funcionando sin ellas.
+    let ventas = null;
+    try {
+      ventas = await obtenerVentasReposicion();
+    } catch (e) {
+      console.error("ventas reposicion:", e.message);
+    }
+    return NextResponse.json(
+      {
+        productos: unirVentas(productos, ventas?.totales ?? null),
+        ventas: ventas ? { hasta: ventas.hasta } : null,
+      },
+      { headers: SIN_CACHE }
+    );
   } catch (e) {
     console.error("datos reposicion:", e.message);
     return NextResponse.json(
