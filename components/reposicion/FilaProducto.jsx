@@ -11,12 +11,11 @@ const ETIQUETA = {
   a_consultar: { texto: "A consultar", clase: "border-ink-faint text-ink-muted" },
 };
 
-
 const formatUsd = (n) => (Number.isFinite(n) ? `$${n.toFixed(2)}` : "—");
 const numero = (n) => (n == null ? "—" : n);
 const cantidad = (n) => String(Math.round(n * 100) / 100);
 // "AAAA-MM-DD" a "DD/MM[/AAAA]" cortando texto (sin Date, para no desfasar husos).
-const ddmm = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}`;
+export const ddmm = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}`;
 
 export default function FilaProducto({ p, periodo }) {
   const estado = estadoDe(p);

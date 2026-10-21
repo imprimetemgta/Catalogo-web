@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, PackageX, RotateCw, Search } from "lucide-react";
 import { LoopMark } from "@/components/RefillLoop";
-import FilaProducto from "./FilaProducto";
+import FilaProducto, { ddmm } from "./FilaProducto";
 import {
   FILTROS,
   MINIMO_STOCK,
@@ -56,15 +56,14 @@ const CIFRAS = [
 
 // Cifras de ventas del periodo (solo con datos de ventas).
 const CIFRAS_VENTAS = [
-  { filtro: "reponer_ya", detalle: "alcanza ≤ 7 d", acento: "border-l-brand-magenta" },
+  { filtro: "reponer_ya", detalle: "alcanza < 7 d", acento: "border-l-brand-magenta" },
   { filtro: "mas_vendidos", detalle: "en el periodo", acento: "border-l-brand-cyan" },
   { filtro: "sin_movimiento", detalle: "con stock, sin venta", acento: "border-l-ink-faint" },
 ];
 
 const SIN_DEPTO = "Sin departamento"; // nombre que usa resumen() para departamento null
 
-// "AAAA-MM-DD" a "DD/MM[/AAAA]" cortando texto (sin Date, para no desfasar husos).
-const ddmm = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}`;
+// "AAAA-MM-DD" a "DD/MM/AAAA" cortando texto (sin Date, para no desfasar husos).
 const ddmmaaaa = (f) => `${ddmm(f)}/${f.slice(0, 4)}`;
 const hoyLocal = () => {
   const d = new Date();
@@ -95,6 +94,11 @@ export default function PanelReposicion({ base, usuario }) {
       const cuerpo = await res.json();
       setProductos(cuerpo.productos ?? []);
       setVentas(cuerpo.ventas ?? null);
+      // Sin ventas, un filtro u orden de ventas ya no existe: volver a los de stock.
+      if (!cuerpo.ventas) {
+        setFiltro((f) => (FILTROS_VENTAS.includes(f) ? "todos" : f));
+        setOrden((o) => (ORDENES_VENTAS.includes(o) ? "nombre" : o));
+      }
     } catch {
       setError("No se pudieron cargar los productos.");
     } finally {
