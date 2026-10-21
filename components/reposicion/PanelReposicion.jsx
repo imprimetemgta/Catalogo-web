@@ -3,15 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, PackageX, RotateCw, Search } from "lucide-react";
-import { LoopMark, StockGauge } from "@/components/RefillLoop";
+import { LoopMark } from "@/components/RefillLoop";
+import FilaProducto from "./FilaProducto";
 import {
   FILTROS,
   MINIMO_STOCK,
   ORDENES,
-  estadoDe,
   filtrarYOrdenar,
   resumen,
 } from "@/lib/reposicion/clasificar";
+import {
+  DIAS_DESACTUALIZADO,
+  PERIODOS,
+  PERIODO_PREDETERMINADO,
+  diasDesde,
+} from "@/lib/reposicion/metricas";
 
 const NOMBRE_FILTRO = {
   todos: "Todos",
@@ -20,14 +26,24 @@ const NOMBRE_FILTRO = {
   bajo: "Stock bajo",
   nuevos: "Nuevos",
   a_consultar: "A consultar",
+  mas_vendidos: "Más vendidos",
+  reponer_ya: "Reponer ya",
+  sin_movimiento: "Sin movimiento",
 };
+
+const FILTROS_VENTAS = ["mas_vendidos", "reponer_ya", "sin_movimiento"];
+const NOMBRE_PERIODO = { 7: "Semana", 15: "15 días", 30: "Mes" };
 
 const NOMBRE_ORDEN = {
   nombre: "Nombre",
   precio_asc: "Menor precio",
   precio_desc: "Mayor precio",
   existencia_asc: "Menor existencia",
+  vendidos_desc: "Más vendidos",
+  alcanza_asc: "Se acaba antes",
 };
+
+const ORDENES_VENTAS = ["vendidos_desc", "alcanza_asc"];
 
 // Cifras de arriba: cada una es también el atajo a su filtro.
 const CIFRAS = [
@@ -38,19 +54,23 @@ const CIFRAS = [
   { filtro: "nuevos", detalle: "últimos 30 días", acento: "border-l-brand-cyan" },
 ];
 
-// Etiqueta de estado de cada fila: el color va en el borde, el texto en tinta.
-const ETIQUETA = {
-  ok: { texto: "OK", clase: "border-brand-cyan text-ink-muted" },
-  bajo: { texto: "Bajo", clase: "border-brand-amber text-ink" },
-  agotado: { texto: "Agotado", clase: "border-brand-magenta text-brand-magentaDeep" },
-  sin_existencias: { texto: "Sin existencias", clase: "border-brand-magenta text-brand-magentaDeep" },
-  a_consultar: { texto: "A consultar", clase: "border-ink-faint text-ink-muted" },
-};
+// Cifras de ventas del periodo (solo con datos de ventas).
+const CIFRAS_VENTAS = [
+  { filtro: "reponer_ya", detalle: "alcanza ≤ 7 d", acento: "border-l-brand-magenta" },
+  { filtro: "mas_vendidos", detalle: "en el periodo", acento: "border-l-brand-cyan" },
+  { filtro: "sin_movimiento", detalle: "con stock, sin venta", acento: "border-l-ink-faint" },
+];
 
 const SIN_DEPTO = "Sin departamento"; // nombre que usa resumen() para departamento null
 
-const formatUsd = (n) => (Number.isFinite(n) ? `$${n.toFixed(2)}` : "—");
-const numero = (n) => (n == null ? "—" : n);
+// "AAAA-MM-DD" a "DD/MM[/AAAA]" cortando texto (sin Date, para no desfasar husos).
+const ddmm = (f) => `${f.slice(8, 10)}/${f.slice(5, 7)}`;
+const ddmmaaaa = (f) => `${ddmm(f)}/${f.slice(0, 4)}`;
+const hoyLocal = () => {
+  const d = new Date();
+  const dos = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
+};
 
 export default function PanelReposicion({ base, usuario }) {
   const router = useRouter();
@@ -61,6 +81,8 @@ export default function PanelReposicion({ base, usuario }) {
   const [departamento, setDepartamento] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [orden, setOrden] = useState("nombre");
+  const [ventas, setVentas] = useState(null);
+  const [periodo, setPeriodo] = useState(PERIODO_PREDETERMINADO);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -72,6 +94,7 @@ export default function PanelReposicion({ base, usuario }) {
       if (!res.ok) throw new Error();
       const cuerpo = await res.json();
       setProductos(cuerpo.productos ?? []);
+      setVentas(cuerpo.ventas ?? null);
     } catch {
       setError("No se pudieron cargar los productos.");
     } finally {
@@ -94,17 +117,27 @@ export default function PanelReposicion({ base, usuario }) {
   };
 
   const lista = productos ?? [];
-  const totales = useMemo(() => resumen(lista), [lista]);
+  const totales = useMemo(() => resumen(lista, Date.now(), periodo), [lista, periodo]);
+  const hayVentas = ventas != null;
+  const diasAtraso = hayVentas ? diasDesde(ventas.hasta, hoyLocal()) : 0;
+  const filtrosVisibles = hayVentas ? FILTROS : FILTROS.filter((f) => !FILTROS_VENTAS.includes(f));
+  const ordenesVisibles = hayVentas ? ORDENES : ORDENES.filter((o) => !ORDENES_VENTAS.includes(o));
   const departamentos = useMemo(
     () => [...new Set(lista.map((p) => p.departamento).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
     [lista]
   );
   const visibles = useMemo(
-    () => filtrarYOrdenar(lista, { filtro, departamento, busqueda, orden }),
-    [lista, filtro, departamento, busqueda, orden]
+    () => filtrarYOrdenar(lista, { filtro, departamento, busqueda, orden, periodo }),
+    [lista, filtro, departamento, busqueda, orden, periodo]
   );
 
   const alternarFiltro = (f) => setFiltro((actual) => (actual === f ? "todos" : f));
+  // Elegir "Más vendidos" como filtro también ordena por ventas.
+  const elegirFiltro = (f) => {
+    setFiltro(f);
+    if (f === "mas_vendidos") setOrden("vendidos_desc");
+  };
+  const tocarCifra = (f) => (filtro === f ? setFiltro("todos") : elegirFiltro(f));
   const alternarDepto = (d) => setDepartamento((actual) => (actual === d ? null : d));
 
   const control =
@@ -155,6 +188,39 @@ export default function PanelReposicion({ base, usuario }) {
         {productos && !error && (
           <>
             {/* Cifras tocables: aplican su filtro; tocar otra vez vuelve a "todos". */}
+            {hayVentas ? (
+              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <div className="flex gap-1.5" role="group" aria-label="Periodo de ventas">
+                  {PERIODOS.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setPeriodo(d)}
+                      aria-pressed={periodo === d}
+                      className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
+                        periodo === d
+                          ? "border-brand-navy bg-brand-navy text-white"
+                          : "border-paper-line bg-white text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      {NOMBRE_PERIODO[d]}
+                    </button>
+                  ))}
+                </div>
+                <span className="tabular font-mono text-xs text-ink-muted">
+                  Ventas al {ddmmaaaa(ventas.hasta)}
+                </span>
+                {diasAtraso > DIAS_DESACTUALIZADO && (
+                  <span className="text-xs font-medium text-brand-magentaDeep">
+                    Ventas desactualizadas ({diasAtraso} días sin actualizar)
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="mb-3 rounded-md border border-paper-line bg-white px-3 py-2 text-xs text-ink-muted">
+                Aún no hay ventas cargadas
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 sm:grid-cols-5">
               {CIFRAS.map((c) => {
                 const activa = filtro === c.filtro;
@@ -176,6 +242,30 @@ export default function PanelReposicion({ base, usuario }) {
                 );
               })}
             </div>
+
+            {hayVentas && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {CIFRAS_VENTAS.map((c) => {
+                  const activa = filtro === c.filtro;
+                  return (
+                    <button
+                      key={c.filtro}
+                      onClick={() => tocarCifra(c.filtro)}
+                      aria-pressed={activa}
+                      className={`rounded-md border border-l-[3px] px-2 py-2 text-left transition min-[400px]:px-3 ${c.acento} ${
+                        activa ? "border-brand-navy bg-paper-dim" : "border-paper-line bg-white hover:border-ink-faint"
+                      }`}
+                    >
+                      <span className="tabular block font-mono text-xl font-semibold leading-tight">
+                        {totales[c.filtro]}
+                      </span>
+                      <span className="block text-xs font-medium text-ink">{NOMBRE_FILTRO[c.filtro]}</span>
+                      <span className="block text-[11px] leading-tight text-ink-faint">{c.detalle}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Desglose por departamento (solo los que tienen algo que revisar). */}
             {totales.porDepartamento.length > 0 && (
@@ -219,10 +309,10 @@ export default function PanelReposicion({ base, usuario }) {
 
             {/* Filtros, búsqueda, departamento y orden. */}
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {FILTROS.map((f) => (
+              {filtrosVisibles.map((f) => (
                 <button
                   key={f}
-                  onClick={() => setFiltro(f)}
+                  onClick={() => elegirFiltro(f)}
                   aria-pressed={filtro === f}
                   className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
                     filtro === f
@@ -269,7 +359,7 @@ export default function PanelReposicion({ base, usuario }) {
                 aria-label="Ordenar por"
                 className={control}
               >
-                {ORDENES.map((o) => (
+                {ordenesVisibles.map((o) => (
                   <option key={o} value={o}>
                     {NOMBRE_ORDEN[o]}
                   </option>
@@ -290,7 +380,7 @@ export default function PanelReposicion({ base, usuario }) {
             ) : (
               <ul className="mt-2 divide-y divide-paper-line overflow-hidden rounded-lg border border-paper-line bg-white">
                 {visibles.map((p) => (
-                  <FilaProducto key={p.codigo} p={p} />
+                  <FilaProducto key={p.codigo} p={p} periodo={hayVentas ? periodo : null} />
                 ))}
               </ul>
             )}
@@ -298,54 +388,5 @@ export default function PanelReposicion({ base, usuario }) {
         )}
       </main>
     </div>
-  );
-}
-
-function FilaProducto({ p }) {
-  const estado = estadoDe(p);
-  const etiqueta = ETIQUETA[estado];
-  const sinDato = estado === "a_consultar";
-
-  return (
-    <li className="flex gap-3 px-3 py-2.5">
-      <div className="w-[26px] shrink-0 pt-0.5">
-        {!sinDato && <StockGauge existencia={p.disponible} umbralBajo={MINIMO_STOCK} size={26} />}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <p className="tabular min-w-0 truncate font-mono text-[11px] text-ink-faint">
-            {p.codigo}
-            {p.departamento && <span className="font-sans"> · {p.departamento}</span>}
-          </p>
-          <span
-            className={`shrink-0 rounded-md border px-1.5 py-px text-[11px] font-medium ${etiqueta.clase}`}
-          >
-            {etiqueta.texto}
-          </span>
-        </div>
-        <p className="mt-0.5 text-sm font-medium leading-snug">{p.nombre}</p>
-        <div className="tabular mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 font-mono text-xs">
-          <span className="font-semibold text-ink">{formatUsd(p.precio)}</span>
-          {sinDato ? (
-            <span className="font-sans font-semibold tracking-wide text-ink-muted">A CONSULTAR</span>
-          ) : (
-            <>
-              <span className="text-ink">
-                <span className="text-ink-faint">disp </span>
-                {p.disponible}
-              </span>
-              <span className="text-ink-muted">
-                <span className="text-ink-faint">bruta </span>
-                {numero(p.bruta)}
-              </span>
-              <span className="text-ink-muted">
-                <span className="text-ink-faint">reserv </span>
-                {numero(p.pedido)}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-    </li>
   );
 }
