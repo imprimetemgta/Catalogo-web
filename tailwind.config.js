@@ -29,6 +29,9 @@ module.exports = {
           // cargue significado (arco de "existencia baja", acento activo de
           // chip): el amarillo puro es casi invisible sobre blanco.
           amber: "#B58900",
+          // Ámbar aún más oscuro para texto pequeño en color: #B58900 no
+          // llega a 4.5:1 sobre blanco; este sí.
+          amberDeep: "#7a5c00",
         },
         whatsapp: "#22C35E",
       },
