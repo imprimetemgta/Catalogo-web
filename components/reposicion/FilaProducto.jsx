@@ -37,7 +37,7 @@ export default function FilaProducto({ p, periodo }) {
 
   // Parte de stock de la línea de abajo: palabra si no hay existencias, si no "disp N".
   let stock;
-  if (sinDato) stock = <b className="tracking-wide">A CONSULTAR</b>;
+  if (sinDato) stock = <b>A CONSULTAR</b>;
   else if (estado === "agotado") stock = <b>Agotado</b>;
   else if (estado === "sin_existencias") stock = <b>Sin existencias</b>;
   else stock = <>disp <b>{p.disponible}</b></>;
@@ -69,7 +69,7 @@ export default function FilaProducto({ p, periodo }) {
         type="button"
         aria-expanded={abierta}
         onClick={() => setAbierta((v) => !v)}
-        className="flex w-full items-stretch text-left"
+        className="flex w-full items-stretch text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-navy"
       >
         <span aria-hidden="true" className={`w-[5px] shrink-0 ${BARRA[urgencia]}`} />
         <span className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5">
@@ -87,19 +87,17 @@ export default function FilaProducto({ p, periodo }) {
           )}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{p.nombre}</span>
-            <span className={`tabular block truncate text-xs ${color}`}>
-              {stock}
+            <span className={`tabular flex flex-wrap gap-x-1.5 text-xs leading-snug ${color}`}>
+              <span className="whitespace-nowrap">{stock}</span>
               {conVentas && !sinDato && (
-                <>
-                  {" · alcanza "}
-                  <b>{m?.alcanzaDias == null ? "—" : `${m.alcanzaDias} d`}</b>
-                </>
+                <span className="whitespace-nowrap">
+                  · alcanza <b>{m?.alcanzaDias == null ? "—" : `${m.alcanzaDias} d`}</b>
+                </span>
               )}
               {conVentas && (
-                <>
-                  {" · vend "}
-                  <b>{cantidad(m ? m.vendidos : 0)}</b>
-                </>
+                <span className="whitespace-nowrap">
+                  · vend <b>{cantidad(m ? m.vendidos : 0)}</b>
+                </span>
               )}
             </span>
           </span>
