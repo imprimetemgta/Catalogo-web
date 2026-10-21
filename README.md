@@ -24,7 +24,8 @@ catalogo-web/
 │  ├─ 02_rate_limit.sql
 │  └─ 03_constraints.sql
 ├─ scripts/
-│  └─ subir_inventario.py     → corre en el servidor de la OFICINA, NO en Vercel
+│  ├─ subir_inventario.py     → corre en el servidor de la OFICINA, NO en Vercel
+│  └─ extraer_ventas.py       → corre en la PC de la TIENDA: ventas de A2 → /api/sync-ventas
 ├─ .env.example
 └─ package.json
 ```
@@ -79,6 +80,15 @@ Programa una tarea que corra, tras el export de A2:
 ```
 python scripts/subir_inventario.py
 ```
+
+### 5. Ventas para la página de reposición (opcional)
+`scripts/extraer_ventas.py` corre en la PC de la tienda (Python de 32 bits +
+`pip install pyodbc`), lee las ventas de los últimos 30 días de A2 en solo
+lectura (ventas suman, devoluciones restan) y las envía a `/api/sync-ventas`
+con el `SYNC_SECRET`. Se configura con `config_ventas.ini` (copiar de
+`scripts/config_ventas.ejemplo.ini`; no se sube). Para probar sin enviar:
+`py -3-32 scripts/extraer_ventas.py --solo-archivo`. Pasos completos en
+`docs/reposicion-despliegue.md` (Fase 2).
 
 ## Flujo completo (cómo verificar que todo está bien)
 

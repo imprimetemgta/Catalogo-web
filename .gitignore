@@ -20,3 +20,10 @@ inventario_*.json
 
 /.impeccable
 PRODUCT.md
+
+# extractor de ventas (config con clave y salidas locales)
+scripts/config_ventas.ini
+scripts/exportaciones/
+scripts/logs/
+ventas_*.json
+__pycache__/
