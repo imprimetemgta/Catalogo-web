@@ -4,6 +4,8 @@ import {
   estadoDe,
   esNuevo,
   filtrarYOrdenar,
+  INICIAL,
+  urgenciaDe,
   resumen,
 } from "../lib/reposicion/clasificar.js";
 
@@ -141,4 +143,32 @@ test("u30 <= 0 pero u7 > 0 (neto): sin_movimiento lo incluye, mas_vendidos con p
 test("sin_movimiento no incluye productos con disponible <= 0", () => {
   const ps = [0, -3].map((d, i) => ({ ...base, codigo: "Z" + i, nombre: "Z" + i, departamento: "TINTAS", precio: 1, bruta: 20, disponible: d, ventas: vt(0, 0, 0) }));
   assert.deepEqual(filtrarYOrdenar(ps, { filtro: "sin_movimiento" }), []);
+});
+
+test("alcanza_asc desempata por más vendidos y luego por nombre", () => {
+  const ps = [
+    { ...base, codigo: "P1", nombre: "Bbb", departamento: null, precio: 1, bruta: 10, disponible: 2, ventas: vt(0, 0, 30) }, // alcanza 2
+    { ...base, codigo: "P2", nombre: "Aaa", departamento: null, precio: 1, bruta: 10, disponible: 4, ventas: vt(0, 0, 60) }, // alcanza 2, vende más
+    { ...base, codigo: "P3", nombre: "Ccc", departamento: null, precio: 1, bruta: 10, disponible: 2, ventas: vt(0, 0, 30) }, // alcanza 2, empata con P1
+  ];
+  assert.deepEqual(filtrarYOrdenar(ps, { orden: "alcanza_asc", periodo: 30 }).map((p) => p.codigo), ["P2", "P1", "P3"]);
+});
+
+test("urgenciaDe: prioridad consultar > agotado/sin existencias > reponer ya > bajo > ok", () => {
+  const p = (over) => ({ ...base, codigo: "U", nombre: "U", departamento: null, precio: 1, ...over });
+  assert.equal(urgenciaDe(p({ bruta: null, disponible: 0, ventas: vt(5, 5, 5) }), 30), "consultar");
+  assert.equal(urgenciaDe(p({ bruta: 0, disponible: 0, ventas: null }), null), "critico"); // sin ventas cargadas
+  assert.equal(urgenciaDe(p({ bruta: 4, disponible: 0, ventas: vt(0, 0, 0) }), 30), "critico");
+  assert.equal(urgenciaDe(p({ bruta: 20, disponible: 20, ventas: vt(0, 0, 150) }), 30), "critico"); // ok de stock, alcanza 4 d
+  assert.equal(urgenciaDe(p({ bruta: 20, disponible: 20, ventas: vt(0, 0, 150) }), null), "ok"); // mismo, sin ventas cargadas
+  assert.equal(urgenciaDe(p({ bruta: 9, disponible: 3, ventas: vt(0, 0, 0) }), 30), "bajo");
+  assert.equal(urgenciaDe(p({ bruta: 20, disponible: 20, ventas: vt(0, 0, 3) }), 30), "ok");
+});
+
+test("INICIAL: valores al abrir con y sin ventas", () => {
+  assert.deepEqual(INICIAL, {
+    conVentas: { filtro: "reponer_ya", orden: "alcanza_asc" },
+    sinVentas: { filtro: "todos", orden: "existencia_asc" },
+  });
+  assert.ok(Object.isFrozen(INICIAL));
 });
