@@ -1,17 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, PackageX, RotateCw, Search } from "lucide-react";
+import { ChevronDown, LogOut, PackageX, RotateCw, Search, SlidersHorizontal } from "lucide-react";
 import { LoopMark } from "@/components/RefillLoop";
 import FilaProducto, { ddmm } from "./FilaProducto";
-import {
-  FILTROS,
-  MINIMO_STOCK,
-  ORDENES,
-  filtrarYOrdenar,
-  resumen,
-} from "@/lib/reposicion/clasificar";
+import PanelFiltros from "./PanelFiltros";
+import { INICIAL, ORDENES, filtrarYOrdenar, resumen } from "@/lib/reposicion/clasificar";
 import {
   DIAS_DESACTUALIZADO,
   PERIODOS,
@@ -45,26 +40,26 @@ const NOMBRE_ORDEN = {
 
 const ORDENES_VENTAS = ["vendidos_desc", "alcanza_asc"];
 
-// Cifras de arriba: cada una es también el atajo a su filtro.
-const CIFRAS = [
-  { filtro: "agotado", detalle: "todo reservado", acento: "border-l-brand-magenta" },
-  { filtro: "sin_existencias", detalle: "0 en almacén", acento: "border-l-brand-magenta" },
-  { filtro: "bajo", detalle: `≤ ${MINIMO_STOCK} disp.`, acento: "border-l-brand-amber" },
-  { filtro: "a_consultar", detalle: "sin dato de A2", acento: "border-l-ink-faint" },
-  { filtro: "nuevos", detalle: "últimos 30 días", acento: "border-l-brand-cyan" },
+// Píldoras de arriba, en este orden: cada una es un filtro y lleva su número.
+const PILDORAS = [
+  { filtro: "reponer_ya", tono: "magenta" },
+  { filtro: "agotado", tono: "magenta" },
+  { filtro: "sin_existencias", tono: "magenta" },
+  { filtro: "bajo", tono: "ambar" },
+  { filtro: "mas_vendidos", tono: "azul" },
+  { filtro: "sin_movimiento", tono: "gris" },
+  { filtro: "a_consultar", tono: "gris" },
+  { filtro: "todos", tono: "gris" },
 ];
 
-// Cifras de ventas del periodo (solo con datos de ventas).
-const CIFRAS_VENTAS = [
-  { filtro: "reponer_ya", detalle: "alcanza < 7 d", acento: "border-l-brand-magenta" },
-  { filtro: "mas_vendidos", detalle: "en el periodo", acento: "border-l-brand-cyan" },
-  { filtro: "sin_movimiento", detalle: "con stock, sin venta", acento: "border-l-ink-faint" },
-];
+// Fondo tenue con texto oscuro (≥ 4.5:1); el color puro solo en el borde.
+const TONOS = {
+  magenta: { base: "bg-brand-magenta/10 text-brand-magentaDeep", borde: "border-brand-magenta" },
+  ambar: { base: "bg-brand-amber/15 text-brand-amberDeep", borde: "border-brand-amber" },
+  azul: { base: "bg-brand-navy/10 text-brand-navy", borde: "border-brand-navy" },
+  gris: { base: "bg-paper-dim text-ink-muted", borde: "border-ink-faint" },
+};
 
-const SIN_DEPTO = "Sin departamento"; // nombre que usa resumen() para departamento null
-
-// "AAAA-MM-DD" a "DD/MM/AAAA" cortando texto (sin Date, para no desfasar husos).
-const ddmmaaaa = (f) => `${ddmm(f)}/${f.slice(0, 4)}`;
 const hoyLocal = () => {
   const d = new Date();
   const dos = (n) => String(n).padStart(2, "0");
@@ -76,13 +71,17 @@ export default function PanelReposicion({ base, usuario }) {
   const [productos, setProductos] = useState(null);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [filtro, setFiltro] = useState("todos");
+  // Abre en "Reponer ya"; si no llegan ventas, cargar() pasa a los de sin ventas.
+  const [filtro, setFiltro] = useState(INICIAL.conVentas.filtro);
   const [departamento, setDepartamento] = useState(null);
   const [busqueda, setBusqueda] = useState("");
-  const [orden, setOrden] = useState("nombre");
+  const [orden, setOrden] = useState(INICIAL.conVentas.orden);
   const [ventas, setVentas] = useState(null);
   const [ventasError, setVentasError] = useState(false);
   const [periodo, setPeriodo] = useState(PERIODO_PREDETERMINADO);
+  const [panelAbierto, setPanelAbierto] = useState(false);
+  const botonFiltros = useRef(null);
+  const primeraCarga = useRef(true);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -96,11 +95,18 @@ export default function PanelReposicion({ base, usuario }) {
       setProductos(cuerpo.productos ?? []);
       setVentas(cuerpo.ventas ?? null);
       setVentasError(cuerpo.ventasError === true);
-      // Sin ventas, un filtro u orden de ventas ya no existe: volver a los de stock.
       if (!cuerpo.ventas) {
-        setFiltro((f) => (FILTROS_VENTAS.includes(f) ? "todos" : f));
-        setOrden((o) => (ORDENES_VENTAS.includes(o) ? "nombre" : o));
+        if (primeraCarga.current) {
+          // Aún están los valores de apertura con ventas: pasar a los de sin ventas completos.
+          setFiltro(INICIAL.sinVentas.filtro);
+          setOrden(INICIAL.sinVentas.orden);
+        } else {
+          // Recarga: solo se corrige lo que ya no existe sin ventas.
+          setFiltro((f) => (FILTROS_VENTAS.includes(f) ? INICIAL.sinVentas.filtro : f));
+          setOrden((o) => (ORDENES_VENTAS.includes(o) ? INICIAL.sinVentas.orden : o));
+        }
       }
+      primeraCarga.current = false;
     } catch {
       setError("No se pudieron cargar los productos.");
     } finally {
@@ -126,7 +132,7 @@ export default function PanelReposicion({ base, usuario }) {
   const totales = useMemo(() => resumen(lista, Date.now(), periodo), [lista, periodo]);
   const hayVentas = ventas != null;
   const diasAtraso = hayVentas ? diasDesde(ventas.hasta, hoyLocal()) : 0;
-  const filtrosVisibles = hayVentas ? FILTROS : FILTROS.filter((f) => !FILTROS_VENTAS.includes(f));
+  const pildorasVisibles = hayVentas ? PILDORAS : PILDORAS.filter((x) => !FILTROS_VENTAS.includes(x.filtro));
   const ordenesVisibles = hayVentas ? ORDENES : ORDENES.filter((o) => !ORDENES_VENTAS.includes(o));
   const departamentos = useMemo(
     () => [...new Set(lista.map((p) => p.departamento).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es")),
@@ -137,17 +143,19 @@ export default function PanelReposicion({ base, usuario }) {
     [lista, filtro, departamento, busqueda, orden, periodo]
   );
 
-  const alternarFiltro = (f) => setFiltro((actual) => (actual === f ? "todos" : f));
   // Elegir "Más vendidos" como filtro también ordena por ventas.
   const elegirFiltro = (f) => {
     setFiltro(f);
     if (f === "mas_vendidos") setOrden("vendidos_desc");
   };
   const tocarCifra = (f) => (filtro === f ? setFiltro("todos") : elegirFiltro(f));
+  const alternarNuevos = () => setFiltro((actual) => (actual === "nuevos" ? "todos" : "nuevos"));
   const alternarDepto = (d) => setDepartamento((actual) => (actual === d ? null : d));
+  const cerrarPanel = useCallback(() => setPanelAbierto(false), []);
 
-  const control =
-    "w-full rounded-md border border-paper-line bg-white px-3 py-2 text-sm text-ink outline-none transition focus:border-brand-navy";
+  // Punto en "Filtros": algo distinto del arranque quedó escondido en el panel.
+  const ordenBase = hayVentas ? INICIAL.conVentas.orden : INICIAL.sinVentas.orden;
+  const hayFiltrosActivos = departamento != null || filtro === "nuevos" || orden !== ordenBase;
 
   return (
     <div className="instrument-grid min-h-screen bg-paper text-ink">
@@ -193,148 +201,31 @@ export default function PanelReposicion({ base, usuario }) {
 
         {productos && !error && (
           <>
-            {/* Cifras tocables: aplican su filtro; tocar otra vez vuelve a "todos". */}
-            {hayVentas ? (
-              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <div className="flex gap-1.5" role="group" aria-label="Periodo de ventas">
-                  {PERIODOS.map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => setPeriodo(d)}
-                      aria-pressed={periodo === d}
-                      className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
-                        periodo === d
-                          ? "border-brand-navy bg-brand-navy text-white"
-                          : "border-paper-line bg-white text-ink-muted hover:text-ink"
-                      }`}
-                    >
-                      {NOMBRE_PERIODO[d]}
-                    </button>
-                  ))}
-                </div>
-                <span className="tabular font-mono text-xs text-ink-muted">
-                  Ventas al {ddmmaaaa(ventas.hasta)}
-                </span>
-                {diasAtraso > DIAS_DESACTUALIZADO && (
-                  <span className="text-xs font-medium text-brand-magentaDeep">
-                    Ventas desactualizadas ({diasAtraso} días sin actualizar)
-                  </span>
-                )}
-              </div>
-            ) : (
-              <p className="mb-3 rounded-md border border-paper-line bg-white px-3 py-2 text-xs text-ink-muted">
-                {ventasError
-                  ? "No se pudieron leer las ventas; intenta más tarde"
-                  : "Aún no hay ventas cargadas"}
-              </p>
-            )}
-
-            <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 sm:grid-cols-5">
-              {CIFRAS.map((c) => {
-                const activa = filtro === c.filtro;
+            {/* Píldoras: cada una es un filtro; tocar la activa vuelve a "todos". */}
+            <div className="flex flex-wrap gap-2">
+              {pildorasVisibles.map(({ filtro: f, tono }) => {
+                const activa = filtro === f;
                 return (
                   <button
-                    key={c.filtro}
-                    onClick={() => alternarFiltro(c.filtro)}
+                    key={f}
+                    onClick={() => tocarCifra(f)}
                     aria-pressed={activa}
-                    className={`rounded-md border border-l-[3px] px-3 py-2 text-left transition ${c.acento} ${
-                      activa ? "border-brand-navy bg-paper-dim" : "border-paper-line bg-white hover:border-ink-faint"
+                    className={`flex min-h-10 items-center gap-1.5 rounded-full border-2 px-3 text-xs transition ${TONOS[tono].base} ${
+                      activa ? TONOS[tono].borde : "border-transparent"
                     }`}
                   >
-                    <span className="tabular block font-mono text-xl font-semibold leading-tight">
-                      {totales[c.filtro]}
+                    <span className="font-medium">{NOMBRE_FILTRO[f]}</span>
+                    <span className="tabular font-mono font-semibold">
+                      {f === "todos" ? totales.total : totales[f]}
                     </span>
-                    <span className="block text-xs font-medium text-ink">{NOMBRE_FILTRO[c.filtro]}</span>
-                    <span className="block text-[11px] text-ink-faint">{c.detalle}</span>
                   </button>
                 );
               })}
             </div>
 
-            {hayVentas && (
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {CIFRAS_VENTAS.map((c) => {
-                  const activa = filtro === c.filtro;
-                  return (
-                    <button
-                      key={c.filtro}
-                      onClick={() => tocarCifra(c.filtro)}
-                      aria-pressed={activa}
-                      className={`rounded-md border border-l-[3px] px-2 py-2 text-left transition min-[400px]:px-3 ${c.acento} ${
-                        activa ? "border-brand-navy bg-paper-dim" : "border-paper-line bg-white hover:border-ink-faint"
-                      }`}
-                    >
-                      <span className="tabular block font-mono text-xl font-semibold leading-tight">
-                        {totales[c.filtro]}
-                      </span>
-                      <span className="block text-xs font-medium text-ink">{NOMBRE_FILTRO[c.filtro]}</span>
-                      <span className="block text-[11px] leading-tight text-ink-faint">{c.detalle}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Desglose por departamento (solo los que tienen algo que revisar). */}
-            {totales.porDepartamento.length > 0 && (
-              <details className="mt-3 rounded-md border border-paper-line bg-white">
-                <summary className="cursor-pointer px-3 py-2 text-xs font-medium uppercase tracking-wide text-ink-faint">
-                  Por departamento ({totales.porDepartamento.length})
-                </summary>
-                <div className="max-h-64 overflow-y-auto border-t border-paper-line">
-                  <div className="tabular sticky top-0 grid grid-cols-[1fr_repeat(4,2.75rem)] gap-1 bg-paper-dim px-3 py-1 font-mono text-[11px] text-ink-faint">
-                    <span className="font-sans">Departamento</span>
-                    <span className="text-right">Agot.</span>
-                    <span className="text-right">Sin ex.</span>
-                    <span className="text-right">Bajo</span>
-                    <span className="text-right">Cons.</span>
-                  </div>
-                  {totales.porDepartamento.map((d) => {
-                    // Los productos sin departamento no se pueden filtrar por nombre.
-                    const filtrable = d.departamento !== SIN_DEPTO;
-                    const activo = departamento === d.departamento;
-                    return (
-                      <button
-                        key={d.departamento}
-                        onClick={() => filtrable && alternarDepto(d.departamento)}
-                        disabled={!filtrable}
-                        aria-pressed={activo}
-                        className={`tabular grid w-full grid-cols-[1fr_repeat(4,2.75rem)] items-center gap-1 border-l-[3px] px-3 py-1.5 text-left font-mono text-xs transition ${
-                          activo ? "border-l-brand-navy bg-paper-dim" : "border-l-transparent hover:bg-paper-dim"
-                        }`}
-                      >
-                        <span className="truncate font-sans text-sm text-ink">{d.departamento}</span>
-                        <span className="text-right">{d.agotado || "·"}</span>
-                        <span className="text-right">{d.sin_existencias || "·"}</span>
-                        <span className="text-right">{d.bajo || "·"}</span>
-                        <span className="text-right">{d.a_consultar || "·"}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </details>
-            )}
-
-            {/* Filtros, búsqueda, departamento y orden. */}
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {filtrosVisibles.map((f) => (
-                <button
-                  key={f}
-                  onClick={() => elegirFiltro(f)}
-                  aria-pressed={filtro === f}
-                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition ${
-                    filtro === f
-                      ? "border-brand-navy bg-brand-navy text-white"
-                      : "border-paper-line bg-white text-ink-muted hover:text-ink"
-                  }`}
-                >
-                  {NOMBRE_FILTRO[f]}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="relative col-span-2">
+            {/* Buscador, periodo (solo con ventas) y panel de filtros. */}
+            <div className="mt-3 flex gap-2">
+              <div className="relative min-w-0 flex-1">
                 <Search
                   size={16}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
@@ -343,42 +234,86 @@ export default function PanelReposicion({ base, usuario }) {
                   type="search"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder="Buscar nombre, código o referencia"
+                  placeholder="Buscar producto"
                   aria-label="Buscar"
-                  className={`${control} pl-9`}
+                  className="min-h-10 w-full rounded-md border border-paper-line bg-white py-2 pl-9 pr-3 text-sm text-ink outline-none transition focus:border-brand-navy"
                 />
               </div>
-              <select
-                value={departamento ?? ""}
-                onChange={(e) => setDepartamento(e.target.value || null)}
-                aria-label="Departamento"
-                className={control}
+              {hayVentas && (
+                <div className="relative shrink-0">
+                  <select
+                    value={periodo}
+                    onChange={(e) => setPeriodo(Number(e.target.value))}
+                    aria-label="Periodo de ventas"
+                    className="min-h-10 appearance-none rounded-md border border-paper-line bg-white py-2 pl-3 pr-8 text-sm font-medium text-ink outline-none transition focus:border-brand-navy"
+                  >
+                    {PERIODOS.map((d) => (
+                      <option key={d} value={d}>
+                        {NOMBRE_PERIODO[d]}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint"
+                  />
+                </div>
+              )}
+              <button
+                ref={botonFiltros}
+                onClick={() => setPanelAbierto(true)}
+                aria-label={hayFiltrosActivos ? "Filtros (hay filtros activos)" : "Filtros"}
+                aria-haspopup="dialog"
+                className="relative flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border border-paper-line bg-white px-3 text-sm font-medium text-ink transition hover:border-ink-faint"
               >
-                <option value="">Todos los departamentos</option>
-                {departamentos.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={orden}
-                onChange={(e) => setOrden(e.target.value)}
-                aria-label="Ordenar por"
-                className={control}
-              >
-                {ordenesVisibles.map((o) => (
-                  <option key={o} value={o}>
-                    {NOMBRE_ORDEN[o]}
-                  </option>
-                ))}
-              </select>
+                <SlidersHorizontal size={16} />
+                Filtros
+                {hayFiltrosActivos && (
+                  <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-brand-magenta" />
+                )}
+              </button>
             </div>
 
-            <p className="mt-3 text-xs text-ink-faint">
-              <span className="tabular font-mono">{visibles.length}</span> de{" "}
-              <span className="tabular font-mono">{lista.length}</span> productos
-            </p>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-ink-muted">
+              <span>
+                <span className="tabular font-mono">{visibles.length}</span> productos
+              </span>
+              {hayVentas ? (
+                <span
+                  className={`tabular font-mono ${
+                    diasAtraso > DIAS_DESACTUALIZADO ? "font-medium text-brand-magentaDeep" : ""
+                  }`}
+                >
+                  ventas al {ddmm(ventas.hasta)}
+                  {diasAtraso > DIAS_DESACTUALIZADO && ` · ${diasAtraso} días sin actualizar`}
+                </span>
+              ) : (
+                <span>
+                  {ventasError
+                    ? "No se pudieron leer las ventas; intenta más tarde"
+                    : "Aún no hay ventas cargadas"}
+                </span>
+              )}
+            </div>
+
+            <PanelFiltros
+              abierto={panelAbierto}
+              onCerrar={cerrarPanel}
+              retorno={botonFiltros}
+              orden={orden}
+              ordenes={ordenesVisibles}
+              nombresOrden={NOMBRE_ORDEN}
+              onOrden={setOrden}
+              departamento={departamento}
+              departamentos={departamentos}
+              onDepartamento={setDepartamento}
+              filtro={filtro}
+              onNuevos={alternarNuevos}
+              cuentaNuevos={totales.nuevos}
+              porDepartamento={totales.porDepartamento}
+              onDepto={alternarDepto}
+              cantidad={visibles.length}
+            />
 
             {visibles.length === 0 ? (
               <div className="mt-2 flex flex-col items-center gap-2 rounded-lg border border-dashed border-paper-line bg-white py-12 text-center text-ink-faint">
