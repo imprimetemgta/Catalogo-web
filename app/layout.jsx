@@ -24,8 +24,13 @@ export const metadata = {
     // real y con el blanco vuelto transparente — el logo completo
     // (logo-imprimete.png) lleva texto que no se lee a tamaño de favicon.
     icon: "/favicon-imprimete.png",
+    apple: "/iconos/catalogo-apple-180.png",
   },
+  // iPhone no lee el manifest para instalar: estos datos van aparte.
+  appleWebApp: { capable: true, title: "Imprimete", statusBarStyle: "default" },
 };
+
+export const viewport = { themeColor: "#ffffff" };
 
 export default function RootLayout({ children }) {
   return (
