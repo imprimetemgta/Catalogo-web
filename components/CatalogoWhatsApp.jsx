@@ -15,6 +15,7 @@ import {
 import { LoopMark, StockGauge } from "./RefillLoop";
 import { useProductosYTasa } from "@/lib/useProductosYTasa";
 import { formatBs, formatFechaTasa } from "@/lib/moneda";
+import { porMasNuevos } from "@/lib/orden";
 
 // Número del asesor (configurable por variable de entorno en Vercel).
 const WHATSAPP_NUMERO =
@@ -24,17 +25,6 @@ const WHATSAPP_NUMERO =
 // solo un borde de 3px (abajo en chip, a la izquierda en fila de filtro).
 const ACCENTOS = ["#E2057D", "#B58900", "#1D9AD6"];
 
-// Ventana del filtro "Nuevo": productos cuya fecha de alta (creado_en, fijada
-// una sola vez al insertarse — ver db/01_schema.sql) cae dentro del último
-// mes. Sin esa fecha (p.ej. el modo de prueba sin Supabase) el producto
-// simplemente no cuenta como nuevo, en vez de romper el filtro.
-const UN_MES_MS = 30 * 24 * 60 * 60 * 1000;
-const esNuevo = (creadoEn) => {
-  if (!creadoEn) return false;
-  const fecha = new Date(creadoEn).getTime();
-  return Number.isFinite(fecha) && Date.now() - fecha <= UN_MES_MS;
-};
-
 export default function CatalogoWhatsApp() {
   const { productos, cargando, error, tasaBcv, tasaFecha, cargarTasa } =
     useProductosYTasa();
@@ -43,7 +33,10 @@ export default function CatalogoWhatsApp() {
   const [imgFallo, setImgFallo] = useState({}); // imágenes que no cargaron
   const [departamento, setDepartamento] = useState("Todos");
   const [marca, setMarca] = useState("Todas");
-  const [soloNuevos, setSoloNuevos] = useState(false);
+  // "Más nuevos primero" ordena todo por fecha de alta (creado_en, fijada una
+  // sola vez al insertarse — ver db/01_schema.sql); no oculta nada.
+  const [masNuevos, setMasNuevos] = useState(false);
+  const [sinImagen, setSinImagen] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
@@ -70,21 +63,26 @@ export default function CatalogoWhatsApp() {
   const productosFiltrados = productos.filter((p) => {
     const coincideDepto = departamento === "Todos" || p.departamento === departamento;
     const coincideMarca = marca === "Todas" || p.marca === marca;
-    const coincideNuevo = !soloNuevos || esNuevo(p.creadoEn);
+    // tieneImagen null (no se pudo revisar el bucket) no cuenta como sin imagen.
+    const coincideImagen = !sinImagen || p.tieneImagen === false;
     const objetivo = `${p.nombre || ""} ${p.codigo || ""}`.toLowerCase();
     const coincideBusq = objetivo.includes(busqueda.toLowerCase());
-    return coincideDepto && coincideMarca && coincideNuevo && coincideBusq;
+    return coincideDepto && coincideMarca && coincideImagen && coincideBusq;
   });
+  // La API ya los manda por nombre; filter devuelve una copia, así que ordenar no muta productos.
+  if (masNuevos) productosFiltrados.sort(porMasNuevos);
 
   const filtrosActivos =
     (departamento !== "Todos" ? 1 : 0) +
     (marca !== "Todas" ? 1 : 0) +
-    (soloNuevos ? 1 : 0);
+    (masNuevos ? 1 : 0) +
+    (sinImagen ? 1 : 0);
 
   const limpiarFiltros = () => {
     setDepartamento("Todos");
     setMarca("Todas");
-    setSoloNuevos(false);
+    setMasNuevos(false);
+    setSinImagen(false);
   };
 
   const prod = (codigo) => productos.find((p) => p.codigo === codigo);
@@ -251,8 +249,10 @@ export default function CatalogoWhatsApp() {
               marcas={marcas}
               marca={marca}
               setMarca={setMarca}
-              soloNuevos={soloNuevos}
-              setSoloNuevos={setSoloNuevos}
+              masNuevos={masNuevos}
+              setMasNuevos={setMasNuevos}
+              sinImagen={sinImagen}
+              setSinImagen={setSinImagen}
               filtrosActivos={filtrosActivos}
               limpiarFiltros={limpiarFiltros}
             />
@@ -456,8 +456,10 @@ export default function CatalogoWhatsApp() {
                 marcas={marcas}
                 marca={marca}
                 setMarca={setMarca}
-                soloNuevos={soloNuevos}
-                setSoloNuevos={setSoloNuevos}
+                masNuevos={masNuevos}
+                setMasNuevos={setMasNuevos}
+                sinImagen={sinImagen}
+                setSinImagen={setSinImagen}
                 filtrosActivos={filtrosActivos}
                 limpiarFiltros={limpiarFiltros}
               />
@@ -485,8 +487,10 @@ function FiltrosPanel({
   marcas,
   marca,
   setMarca,
-  soloNuevos,
-  setSoloNuevos,
+  masNuevos,
+  setMasNuevos,
+  sinImagen,
+  setSinImagen,
   filtrosActivos,
   limpiarFiltros,
 }) {
@@ -507,9 +511,9 @@ function FiltrosPanel({
       </div>
       <FiltroToggle
         titulo="Novedades"
-        etiqueta="Nuevo (agregado el último mes)"
-        activo={soloNuevos}
-        onCambiar={setSoloNuevos}
+        etiqueta="Más nuevos primero"
+        activo={masNuevos}
+        onCambiar={setMasNuevos}
       />
       <FiltroSeccion
         titulo="Departamento"
@@ -526,6 +530,12 @@ function FiltrosPanel({
         valorTodos="Todas"
         valor={marca}
         onCambiar={setMarca}
+      />
+      <FiltroToggle
+        titulo="Imagen"
+        etiqueta="Sin imagen"
+        activo={sinImagen}
+        onCambiar={setSinImagen}
       />
     </div>
   );

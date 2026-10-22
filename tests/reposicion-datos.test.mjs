@@ -50,6 +50,7 @@ test("mapearFilaJson: precio es Number y la forma es la de producto", () => {
     pedido: 0,
     creadoEn: null,
     imagen: null,
+    tieneImagen: false,
   });
   assert.equal(typeof p.precio, "number");
 });
@@ -79,6 +80,12 @@ test("mapearFilaSupabase: existencia_bruta null se conserva como null", () => {
 test("mapearFilaSupabase: imagen igual que /api/productos", () => {
   const p = mapearFilaSupabase(filaSb, "https://x.supabase.co");
   assert.equal(p.imagen, "https://x.supabase.co/storage/v1/object/public/productos/A_1_x.jpg");
+});
+
+test("mapearFilaSupabase: tieneImagen según el bucket, null si no se pudo listar", () => {
+  assert.equal(mapearFilaSupabase(filaSb, "https://x.supabase.co", new Set(["A_1_x.jpg"])).tieneImagen, true);
+  assert.equal(mapearFilaSupabase(filaSb, "https://x.supabase.co", new Set(["otro.jpg"])).tieneImagen, false);
+  assert.equal(mapearFilaSupabase(filaSb, "https://x.supabase.co").tieneImagen, null);
 });
 
 test("unirVentas: sin totales deja ventas null en todos", () => {

@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   estadoDe,
-  esNuevo,
   filtrarYOrdenar,
   INICIAL,
   urgenciaDe,
@@ -32,7 +31,7 @@ test("resumen cuenta por estado", () => {
   assert.equal(r.sin_existencias, 1);
   assert.equal(r.bajo, 1);
   assert.equal(r.a_consultar, 1);
-  assert.equal(r.nuevos, 0);
+  assert.equal(r.sin_imagen, 0);
 });
 
 test("resumen: porDepartamento solo con problemas, ordenado, null = Sin departamento", () => {
@@ -44,11 +43,14 @@ test("resumen: porDepartamento solo con problemas, ordenado, null = Sin departam
   ]);
 });
 
-test("resumen: nuevos cuenta independiente del estado", () => {
-  const ahora = Date.parse("2026-10-20T00:00:00Z");
-  const reciente = new Date(ahora - 2 * 86400000).toISOString();
-  const r = resumen([{ ...fixture[2], creadoEn: reciente }, fixture[4]], ahora);
-  assert.equal(r.nuevos, 1);
+test("resumen: sin_imagen cuenta independiente del estado y no cuenta el sin dato", () => {
+  const r = resumen([
+    { ...fixture[2], tieneImagen: false },
+    { ...fixture[4], tieneImagen: false },
+    { ...fixture[3], tieneImagen: true },
+    { ...fixture[1], tieneImagen: null },
+  ]);
+  assert.equal(r.sin_imagen, 2);
   assert.equal(r.agotado, 1);
 });
 
@@ -76,17 +78,25 @@ test("filtra por departamento y por estado, sin mutar la entrada", () => {
   assert.equal(JSON.stringify(fixture), copia);
 });
 
-test("filtro nuevos", () => {
-  const ahora = Date.parse("2026-10-20T00:00:00Z");
-  const p = { ...fixture[4], creadoEn: new Date(ahora - 86400000).toISOString() };
-  assert.deepEqual(filtrarYOrdenar([p, fixture[3]], { filtro: "nuevos" }, ahora).map((x) => x.codigo), ["E"]);
+test("filtro sin_imagen: solo tieneImagen false", () => {
+  const lista = [
+    { ...fixture[4], tieneImagen: false },
+    { ...fixture[3], tieneImagen: true },
+    { ...fixture[2], tieneImagen: null },
+  ];
+  assert.deepEqual(filtrarYOrdenar(lista, { filtro: "sin_imagen" }).map((x) => x.codigo), ["E"]);
 });
 
-test("esNuevo: 30 días", () => {
-  const ahora = Date.parse("2026-10-20T00:00:00Z");
-  assert.equal(esNuevo(new Date(ahora - 29 * 86400000).toISOString(), ahora), true);
-  assert.equal(esNuevo(new Date(ahora - 31 * 86400000).toISOString(), ahora), false);
-  assert.equal(esNuevo(null, ahora), false);
+test("orden nuevos_desc: de la más reciente a la más vieja, sin fecha al final, empate por nombre", () => {
+  const lista = [
+    { ...fixture[0], creadoEn: "2026-09-01T00:00:00Z" },
+    { ...fixture[1], creadoEn: null },
+    { ...fixture[2], creadoEn: "2026-10-15T00:00:00Z" },
+    { ...fixture[3], creadoEn: "2026-09-01T00:00:00Z" },
+    { ...fixture[4], creadoEn: "2026-10-20T00:00:00Z" },
+  ];
+  // A ("Consultar") y D ("TÓNER HP") comparten fecha: por nombre.
+  assert.deepEqual(filtrarYOrdenar(lista, { orden: "nuevos_desc" }).map((x) => x.codigo), ["E", "C", "A", "D", "B"]);
 });
 
 // --- Fase 2: métricas de ventas ---
