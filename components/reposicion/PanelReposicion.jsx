@@ -19,7 +19,7 @@ const NOMBRE_FILTRO = {
   agotado: "Agotados",
   sin_existencias: "Sin existencias",
   bajo: "Stock bajo",
-  nuevos: "Nuevos",
+  sin_imagen: "Sin imagen",
   a_consultar: "A consultar",
   mas_vendidos: "Más vendidos",
   reponer_ya: "Reponer ya",
@@ -36,6 +36,7 @@ const NOMBRE_ORDEN = {
   existencia_asc: "Menor existencia",
   vendidos_desc: "Más vendidos",
   alcanza_asc: "Se acaba antes",
+  nuevos_desc: "Más nuevos",
 };
 
 const ORDENES_VENTAS = ["vendidos_desc", "alcanza_asc"];
@@ -176,7 +177,7 @@ export default function PanelReposicion({ base, usuario }) {
     setDepartamento(null);
     setBusqueda("");
   };
-  const alternarNuevos = () => setFiltro((actual) => (actual === "nuevos" ? "todos" : "nuevos"));
+  const alternarSinImagen = () => setFiltro((actual) => (actual === "sin_imagen" ? "todos" : "sin_imagen"));
   const alternarDepto = (d) => setDepartamento((actual) => (actual === d ? null : d));
   const cerrarPanel = useCallback(() => setPanelAbierto(false), []);
 
@@ -187,7 +188,7 @@ export default function PanelReposicion({ base, usuario }) {
 
   // Punto en "Filtros": algo distinto del arranque quedó escondido en el panel.
   const ordenBase = hayVentas ? INICIAL.conVentas.orden : INICIAL.sinVentas.orden;
-  const hayFiltrosActivos = departamento != null || filtro === "nuevos" || orden !== ordenBase;
+  const hayFiltrosActivos = departamento != null || filtro === "sin_imagen" || orden !== ordenBase;
 
   return (
     <div className="instrument-grid min-h-screen bg-paper text-ink">
@@ -361,8 +362,8 @@ export default function PanelReposicion({ base, usuario }) {
               departamentos={departamentos}
               onDepartamento={setDepartamento}
               filtro={filtro}
-              onNuevos={alternarNuevos}
-              cuentaNuevos={totales.nuevos}
+              onSinImagen={alternarSinImagen}
+              cuentaSinImagen={totales.sin_imagen}
               porDepartamento={totales.porDepartamento}
               onDepto={alternarDepto}
               cantidad={visibles.length}

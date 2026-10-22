@@ -6,7 +6,7 @@ const SIN_DEPTO = "Sin departamento"; // nombre que usa resumen() para departame
 
 const titulo = "mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted";
 
-// Hoja inferior con orden, departamento, "Nuevos" y el resumen por departamento.
+// Hoja inferior con orden, departamento, "Sin imagen" y el resumen por departamento.
 export default function PanelFiltros({
   abierto,
   onCerrar,
@@ -19,8 +19,8 @@ export default function PanelFiltros({
   departamentos,
   onDepartamento,
   filtro,
-  onNuevos,
-  cuentaNuevos,
+  onSinImagen,
+  cuentaSinImagen,
   porDepartamento,
   onDepto,
   cantidad,
@@ -100,15 +100,15 @@ export default function PanelFiltros({
         <section className="mb-4">
           <h2 className={titulo}>Otros</h2>
           <button
-            onClick={onNuevos}
-            aria-pressed={filtro === "nuevos"}
+            onClick={onSinImagen}
+            aria-pressed={filtro === "sin_imagen"}
             className={`min-h-10 rounded-full border px-3 text-sm font-medium transition ${
-              filtro === "nuevos"
+              filtro === "sin_imagen"
                 ? "border-brand-navy bg-brand-navy text-white"
                 : "border-paper-line bg-white text-ink-muted hover:text-ink"
             }`}
           >
-            Nuevos (<span className="tabular font-mono">{cuentaNuevos}</span>)
+            Sin imagen (<span className="tabular font-mono">{cuentaSinImagen}</span>)
           </button>
         </section>
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAnonClient } from "@/lib/supabase";
+import { BUCKET_IMAGENES, nombreImagen, tieneImagenDe } from "@/lib/imagenes";
+import { nombresDeImagenes } from "@/lib/imagenesStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,8 +25,9 @@ async function productosDePrueba() {
       departamento: p.NOMBRE_DEPARTAMENTO || null,
       precio: Number(p.PRECIO_USD),
       existencia: p.EXISTENCIA_DISPONIBLE,
-      creadoEn: null, // inventario.json no trae fecha de alta; el filtro "Nuevo" no aplica en este modo de prueba
+      creadoEn: null, // inventario.json no trae fecha de alta; "Más nuevos primero" queda por nombre en este modo de prueba
       imagen: null, // sin Supabase Storage local; el catálogo cae al respaldo
+      tieneImagen: false,
     }))
     .sort((a, b) => (a.nombre || "").localeCompare(b.nombre || ""));
 }
@@ -36,13 +39,16 @@ export async function GET() {
 
   const sb = getAnonClient();
 
-  const { data, error } = await sb
-    .from("productos")
-    .select(
-      "codigo, descripcion, marca, modelo, nombre_departamento, precio_usd, existencia_disponible, creado_en"
-    )
-    .eq("publicaweb", true)
-    .order("descripcion");
+  const [{ data, error }, nombres] = await Promise.all([
+    sb
+      .from("productos")
+      .select(
+        "codigo, descripcion, marca, modelo, nombre_departamento, precio_usd, existencia_disponible, creado_en"
+      )
+      .eq("publicaweb", true)
+      .order("descripcion"),
+    nombresDeImagenes(),
+  ]);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -51,9 +57,8 @@ export async function GET() {
   // URL pública de la imagen en Supabase Storage, derivada del código.
   // Si el producto no tiene foto, el navegador recibe 404 y el catálogo
   // muestra el respaldo (no se guarda ninguna imagen en la base).
+  // tieneImagen sale de listar el bucket (null si no se pudo listar).
   const base = process.env.SUPABASE_URL;
-  const BUCKET = "productos";
-  const safe = (c) => String(c).replace(/[^A-Za-z0-9._-]/g, "_");
 
   const productos = (data ?? []).map((p) => ({
     codigo: p.codigo,
@@ -64,7 +69,8 @@ export async function GET() {
     precio: Number(p.precio_usd),
     existencia: p.existencia_disponible,
     creadoEn: p.creado_en,
-    imagen: `${base}/storage/v1/object/public/${BUCKET}/${safe(p.codigo)}.jpg`,
+    imagen: `${base}/storage/v1/object/public/${BUCKET_IMAGENES}/${nombreImagen(p.codigo)}`,
+    tieneImagen: tieneImagenDe(nombres, p.codigo),
   }));
 
   return NextResponse.json(productos);
