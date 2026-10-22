@@ -169,6 +169,7 @@ Antes de confiar en la página, comparar 3 a 5 productos contra el reporte de **
 
 - [ ] Un producto de venta normal: las unidades coinciden.
 - [ ] Un producto que tuvo una **devolución**: la cifra de la página es la venta menos la devolución.
+- [ ] Un producto que salió con **nota de entrega** y se facturó después: cuenta una sola vez, la factura. Las notas de entrega (tipo 13) no se cuentan.
 - [ ] Un producto que se vende por **caja o paquete** (si existe): confirmar que A2 y la página cuentan la misma unidad.
 - [ ] Un producto sin ventas: no aparece o muestra cero.
 

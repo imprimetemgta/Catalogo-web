@@ -61,6 +61,8 @@ DEFAULT_CONFIG = os.path.join(DIR_SCRIPT, "config_ventas.ini")
 DIAS_VENTANA = 30          # hasta - 29 dias .. hasta, ambos incluidos
 TIPO_VENTA = 11
 TIPO_DEVOLUCION = 12
+# El 13 (nota de entrega) NO se cuenta: en la tienda se factura despues, y esa
+# factura ya llega como tipo 11; contarla duplicaria la venta (confirmado 2026-10-21).
 TIMEOUT_HTTP = 60          # segundos
 TIMEOUT_CONEXION = 30      # segundos para conectar con A2
 TIMEOUT_CONSULTA = 120     # segundos maximos de la consulta

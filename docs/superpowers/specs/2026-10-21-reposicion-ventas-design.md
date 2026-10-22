@@ -21,8 +21,12 @@ métricas con filtro de **semana, 15 días y mes**, y dejó el resto a criterio 
     usuario (2026-10-21):** al devolver o anular, la línea de la venta original **no
     desaparece**; queda como tipo 11 y la devolución se guarda aparte con otro tipo (12).
     Por eso vendidos netos = tipo 11 − tipo 12, cada uno en su propia fecha.
-- `SOperacionInv` es la cabecera y no hace falta para esto. Hay otros tipos (`6`
-  pedidos/pendientes, `13`) que **no** cuentan.
+- `SOperacionInv` es la cabecera y no hace falta para esto. Hay otros tipos que
+  **no** cuentan:
+  - `6`: pedidos o pendientes.
+  - `13`: notas de entrega. **Confirmado por el usuario (2026-10-21):** en la tienda
+    las notas de entrega se facturan después, y esa factura ya llega como tipo 11.
+    Contarlas duplicaría la venta, así que solo cuentan las facturas.
 - Conexión: driver ODBC DBISAM 4 de **32 bits**, igual que el extractor de inventario
   (en Taxfree es `extractor_taxfree.py`: Python de 32 bits + `pyodbc` + `config.ini`).
 - La base `C:\A2\A2imprimete` de la PC de desarrollo **no tiene datos de Imprimete**: es
