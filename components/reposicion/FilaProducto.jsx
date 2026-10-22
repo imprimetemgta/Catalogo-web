@@ -89,7 +89,12 @@ export default function FilaProducto({ p, periodo }) {
             <span aria-hidden="true" className="h-10 w-10 shrink-0 rounded-md bg-paper-dim" />
           )}
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">{p.nombre}</span>
+            {/* Hasta 2 líneas; al abrir la fila se ve completa. */}
+            <span
+              className={`break-words text-sm font-semibold ${abierta ? "block" : "line-clamp-2"}`}
+            >
+              {p.nombre}
+            </span>
             <span className={`tabular flex flex-wrap gap-x-1.5 text-xs leading-snug ${color}`}>
               <span className="whitespace-nowrap">{stock}</span>
               {conVentas && !sinDato && !palabraStock && (
