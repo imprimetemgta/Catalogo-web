@@ -138,8 +138,9 @@ Esto lee A2 y guarda un archivo en `exportaciones\ventas_FECHA.json`, pero **no 
    ```
 
    Si todo sale bien, el programa muestra la respuesta del catálogo con `"ok": true` y cuántas filas se guardaron.
-3. Programar la tarea en el **Programador de tareas de Windows**: una vez al día, **después** de la exportación de inventario, con el mismo comando. Si algo falla, el programa lo anota en la carpeta `logs`.
-   - Conviene programarla **cerca del cierre de la tienda** (por ejemplo, 8 de la noche): el programa cuenta el día de hoy, y si corre en la mañana las ventas de hoy quedan incompletas.
+3. Programar la tarea en el **Programador de tareas de Windows**, **después** de la exportación de inventario, con el mismo comando. Si algo falla, el programa lo anota en la carpeta `logs`.
+   - Horario recomendado para la tienda (abre de 8 a. m. a 5 p. m.): **9:00 a. m., 11:30 a. m., 2:00 p. m. y 5:15 p. m.** La de las 5:15 es la importante: deja el día completo para decidir al día siguiente. Las otras muestran lo vendido durante el día.
+   - En la página de reposición, encima de la lista, se ve la fecha y hora de la última sincronización de inventario y de ventas. Si alguna pasa de 2 días sin actualizarse, se pone en magenta.
    - En la pestaña **Configuración** de la tarea, marcar **"Detener la tarea si se ejecuta durante más de:"** y elegir **30 minutos**. Así, si A2 se traba, la tarea no queda corriendo para siempre.
 
 ## Primera corrida: comprobar que los números son correctos

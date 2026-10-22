@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unirVentas } from "@/lib/reposicion/datos";
 import {
+  obtenerInventarioActualizado,
   obtenerProductosReposicion,
   obtenerVentasReposicion,
   sesionActual,
@@ -29,11 +30,19 @@ export async function GET() {
       console.error("ventas reposicion:", e.message);
       ventasError = true;
     }
+    // La hora de la última sincronización es informativa: si falla, se omite.
+    let inventarioEn = null;
+    try {
+      inventarioEn = await obtenerInventarioActualizado();
+    } catch (e) {
+      console.error("inventario actualizado reposicion:", e.message);
+    }
     return NextResponse.json(
       {
         productos: unirVentas(productos, ventas?.totales ?? null),
-        ventas: ventas ? { hasta: ventas.hasta } : null,
+        ventas: ventas ? { hasta: ventas.hasta, actualizadoEn: ventas.actualizadoEn } : null,
         ventasError,
+        inventarioEn,
       },
       { headers: SIN_CACHE }
     );

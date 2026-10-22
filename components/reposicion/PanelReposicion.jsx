@@ -60,11 +60,22 @@ const TONOS = {
   gris: { base: "bg-paper-dim text-ink-muted", borde: "border-ink-muted" },
 };
 
-const hoyLocal = () => {
-  const d = new Date();
+// Fecha local "AAAA-MM-DD" (no toISOString: eso es UTC).
+const fechaLocal = (d = new Date()) => {
   const dos = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${dos(d.getMonth() + 1)}-${dos(d.getDate())}`;
 };
+const hoyLocal = () => fechaLocal();
+
+// "21/10 4:02 p. m." en la hora del teléfono.
+const FECHA_HORA = new Intl.DateTimeFormat("es-VE", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+});
+const fechaHora = (iso) => FECHA_HORA.format(new Date(iso)).replace(",", "");
 
 export default function PanelReposicion({ base, usuario }) {
   const router = useRouter();
@@ -78,6 +89,7 @@ export default function PanelReposicion({ base, usuario }) {
   const [orden, setOrden] = useState(INICIAL.conVentas.orden);
   const [ventas, setVentas] = useState(null);
   const [ventasError, setVentasError] = useState(false);
+  const [inventarioEn, setInventarioEn] = useState(null);
   const [periodo, setPeriodo] = useState(PERIODO_PREDETERMINADO);
   const [panelAbierto, setPanelAbierto] = useState(false);
   const botonFiltros = useRef(null);
@@ -96,6 +108,7 @@ export default function PanelReposicion({ base, usuario }) {
       setProductos(cuerpo.productos ?? []);
       setVentas(cuerpo.ventas ?? null);
       setVentasError(cuerpo.ventasError === true);
+      setInventarioEn(cuerpo.inventarioEn ?? null);
       if (cuerpo.ventas) {
         // Primera carga con ventas: si no hay nada que reponer ya, no abrir en una lista vacía.
         if (primeraCarga.current && resumen(cuerpo.productos ?? [], Date.now(), PERIODO_PREDETERMINADO).reponer_ya === 0) {
@@ -138,6 +151,7 @@ export default function PanelReposicion({ base, usuario }) {
   const totales = useMemo(() => resumen(lista, Date.now(), periodo), [lista, periodo]);
   const hayVentas = ventas != null;
   const diasAtraso = hayVentas ? diasDesde(ventas.hasta, hoyLocal()) : 0;
+  const diasInventario = inventarioEn ? diasDesde(fechaLocal(new Date(inventarioEn)), hoyLocal()) : 0;
   const pildorasVisibles = hayVentas ? PILDORAS : PILDORAS.filter((x) => !FILTROS_VENTAS.includes(x.filtro));
   const ordenesVisibles = hayVentas ? ORDENES : ORDENES.filter((o) => !ORDENES_VENTAS.includes(o));
   const departamentos = useMemo(
@@ -297,26 +311,42 @@ export default function PanelReposicion({ base, usuario }) {
               </button>
             </div>
 
-            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-ink-muted">
+            {/* Última sincronización de cada carga: son independientes y una puede fallar sola. */}
+            <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs text-ink-muted">
               <span>
                 <span className="tabular font-mono">{visibles.length}</span> productos
               </span>
-              {hayVentas ? (
-                <span
-                  className={`tabular font-mono ${
-                    diasAtraso > DIAS_DESACTUALIZADO ? "font-medium text-brand-magentaDeep" : ""
-                  }`}
-                >
-                  ventas al {ddmm(ventas.hasta)}
-                  {diasAtraso > DIAS_DESACTUALIZADO && ` · ${diasAtraso} días sin actualizar`}
-                </span>
-              ) : (
-                <span>
-                  {ventasError
-                    ? "No se pudieron leer las ventas; intenta más tarde"
-                    : "Aún no hay ventas cargadas"}
-                </span>
-              )}
+              <span className="flex flex-wrap justify-end gap-x-2 text-right">
+                {inventarioEn && (
+                  <span
+                    className={`whitespace-nowrap ${
+                      diasInventario > DIAS_DESACTUALIZADO ? "font-medium text-brand-magentaDeep" : ""
+                    }`}
+                  >
+                    Inventario <span className="tabular">{fechaHora(inventarioEn)}</span>
+                    {diasInventario > DIAS_DESACTUALIZADO && ` · ${diasInventario} días sin actualizar`}
+                  </span>
+                )}
+                {hayVentas ? (
+                  <span
+                    className={`whitespace-nowrap ${
+                      diasAtraso > DIAS_DESACTUALIZADO ? "font-medium text-brand-magentaDeep" : ""
+                    }`}
+                  >
+                    Ventas{" "}
+                    <span className="tabular">
+                      {ventas.actualizadoEn ? fechaHora(ventas.actualizadoEn) : `al ${ddmm(ventas.hasta)}`}
+                    </span>
+                    {diasAtraso > DIAS_DESACTUALIZADO && ` · ${diasAtraso} días sin actualizar`}
+                  </span>
+                ) : (
+                  <span>
+                    {ventasError
+                      ? "No se pudieron leer las ventas; intenta más tarde"
+                      : "Aún no hay ventas cargadas"}
+                  </span>
+                )}
+              </span>
             </div>
 
             <PanelFiltros
