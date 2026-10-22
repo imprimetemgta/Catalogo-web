@@ -7,7 +7,16 @@ import { sesionActual } from "@/lib/reposicion/servidor";
 export const metadata = {
   title: "Reposición — Imprimete C.A.",
   robots: { index: false, follow: false },
+  // App instalable aparte del catálogo (reemplaza el manifest de la raíz).
+  manifest: `${RUTA_SECRETA}/manifest.webmanifest`,
+  icons: {
+    icon: "/favicon-imprimete.png",
+    apple: "/iconos/reposicion-apple-180.png",
+  },
+  appleWebApp: { capable: true, title: "Reposición", statusBarStyle: "default" },
 };
+
+export const viewport = { themeColor: "#213B86" };
 
 export const dynamic = "force-dynamic";
 
