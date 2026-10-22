@@ -27,3 +27,7 @@ scripts/exportaciones/
 scripts/logs/
 ventas_*.json
 __pycache__/
+
+# compilado del extractor de ventas
+scripts/build/
+scripts/dist/

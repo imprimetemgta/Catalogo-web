@@ -96,17 +96,17 @@ En **Supabase → SQL Editor**, pegar y ejecutar el contenido de `db/08_ventas_d
 
 Desplegar en Vercel como siempre. Verificar que la variable `SYNC_SECRET` ya existe (es la misma que usa el inventario); el envío de ventas usa esa misma clave.
 
-## Paso 3. Instalar lo necesario en la PC de la tienda
+## Paso 3. Preparar el programa en la PC de la tienda
 
-1. Instalar **Python de 32 bits** (el driver de A2, "DBISAM 4 ODBC Driver", es de 32 bits; con Python de 64 bits no conecta). Al instalar, marcar "Add python.exe to PATH".
-2. Abrir una terminal y ejecutar:
+El extractor de ventas es un programa propio, **`ExtraerVentasImprimete.exe`**, independiente del de inventario: cada uno tiene su tarea programada y uno no depende del otro. La tienda **no necesita Python**.
 
-   ```
-   pip install pyodbc
-   ```
-
-   Es lo único que se instala; el resto viene con Python.
-3. Copiar a la PC la carpeta `scripts` del proyecto (o al menos `extraer_ventas.py` y `config_ventas.ejemplo.ini`).
+1. En la PC de desarrollo, con Python de 32 bits, ejecutar `scripts\compilar_extractor_ventas.bat`. Deja en `scripts\dist\` lo siguiente:
+   - `ExtraerVentasImprimete.exe`;
+   - `config_ventas.ejemplo.ini`;
+   - `1_PROBAR_VENTAS_SOLO_ARCHIVO.bat`;
+   - `2_ENVIAR_VENTAS_AHORA.bat`.
+2. Copiar esa carpeta a la PC de la tienda, por ejemplo a `C:\CatalogoImprimete\Ventas\`.
+3. La PC de la tienda solo necesita el driver de A2, "DBISAM 4 ODBC Driver", que ya usa el extractor de inventario.
 
 ## Paso 4. Preparar la configuración
 
@@ -120,28 +120,48 @@ El archivo `config_ventas.ini` tiene la clave: no se sube a GitHub ni se compart
 
 ## Paso 5. Probar sin enviar nada
 
-En la terminal, dentro de la carpeta `scripts`:
+Doble clic en **`1_PROBAR_VENTAS_SOLO_ARCHIVO.bat`**.
 
-```
-py -3-32 extraer_ventas.py --solo-archivo
-```
+Esto lee A2 y guarda un archivo en `exportaciones\ventas_FECHA.json`, pero **no envía nada**. Abrirlo y ver que tiene códigos de productos, fechas y unidades. Al final la ventana muestra el código de salida:
 
-Esto lee A2 y guarda un archivo en `exportaciones\ventas_FECHA.json`, pero **no envía nada**. Abrirlo y ver que tiene códigos de productos, fechas y unidades. Si dice "No hay ventas en los últimos 30 días", el programa termina con código 2 y no envía nada (es normal en una base sin ventas recientes).
+- 0: todo bien.
+- 1: hubo un error. El log dice qué revisar.
+- 2: no hay ventas en los últimos 30 días. No se envía nada; es normal en una base sin ventas recientes.
 
 ## Paso 6. Pasar a producción
 
 1. En `config_ventas.ini`, cambiar `api_url` a la dirección real: `https://<dominio>/api/sync-ventas`.
-2. Correr una vez, sin `--solo-archivo`:
+2. Doble clic en **`2_ENVIAR_VENTAS_AHORA.bat`**. Si todo sale bien, la última línea dice `FIN: OK, N filas enviadas`, y la anterior, cuántas filas guardó el catálogo.
+3. Crear la tarea en el **Programador de tareas de Windows** (Crear tarea…):
+   - **Acción:** "Iniciar un programa".
+     - Programa: `C:\CatalogoImprimete\Ventas\ExtraerVentasImprimete.exe`.
+     - "Iniciar en": la misma carpeta, `C:\CatalogoImprimete\Ventas\`.
+     - Se llama al `.exe` directo, no a los `.bat`, porque esos esperan una tecla.
+   - **General:** "Ejecutar tanto si el usuario inició sesión como si no".
+   - **Desencadenadores:** uno por cada horario.
 
-   ```
-   py -3-32 extraer_ventas.py
-   ```
-
-   Si todo sale bien, el programa muestra la respuesta del catálogo con `"ok": true` y cuántas filas se guardaron.
-3. Programar la tarea en el **Programador de tareas de Windows**, **después** de la exportación de inventario, con el mismo comando. Si algo falla, el programa lo anota en la carpeta `logs`.
+   Es una tarea aparte de la del inventario.
    - Horario recomendado para la tienda (abre de 8 a. m. a 5 p. m.): **9:00 a. m., 11:30 a. m., 2:00 p. m. y 5:15 p. m.** La de las 5:15 es la importante: deja el día completo para decidir al día siguiente. Las otras muestran lo vendido durante el día.
    - En la página de reposición, encima de la lista, se ve la fecha y hora de la última sincronización de inventario y de ventas. Si alguna pasa de 2 días sin actualizarse, se pone en magenta.
    - En la pestaña **Configuración** de la tarea, marcar **"Detener la tarea si se ejecuta durante más de:"** y elegir **30 minutos**. Así, si A2 se traba, la tarea no queda corriendo para siempre.
+
+## Cómo leer los logs
+
+Cada día se crea un archivo en `logs\ventas_AAAAMMDD.log`. Cada corrida queda entre una línea `INICIO` y una línea `FIN` que dice el resultado:
+
+```
+2026-10-22 09:00:02  INFO     ===== INICIO extractor de ventas v1.1 (envio al catalogo) =====
+2026-10-22 09:00:02  INFO     Leyendo ventas de A2 (carpeta C:\A2\A2imprimete\Empre001\Data) del 23/09/2026 al 22/10/2026 ...
+2026-10-22 09:00:04  INFO     A2 devolvio 812 lineas -> 640 filas netas por producto y dia
+2026-10-22 09:00:04  INFO     Copia guardada en: ...\exportaciones\ventas_2026-10-22_090004.json
+2026-10-22 09:00:04  INFO     Enviando 640 filas a https://<dominio>/api/sync-ventas ...
+2026-10-22 09:00:06  INFO     Catalogo respondio OK: 640 filas guardadas, ventas hasta 2026-10-22
+2026-10-22 09:00:06  INFO     ===== FIN: OK, 640 filas enviadas (4 s) =====
+```
+
+- **Cuando algo falla**, la línea `ERROR` dice qué pasó y la siguiente, que empieza con `Que revisar:`, dice qué hacer. Por ejemplo, si la clave no coincide con la de Vercel, si no hay internet o si no encuentra la carpeta de A2.
+- **Para revisar rápido**, basta con buscar `FIN:` en el log: ahí aparece el resultado de cada corrida del día.
+- **Los logs y las copias** en `exportaciones\` de más de 60 días se borran solos.
 
 ## Primera corrida: comprobar que los números son correctos
 

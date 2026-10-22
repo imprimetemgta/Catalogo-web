@@ -25,7 +25,7 @@ catalogo-web/
 │  └─ 03_constraints.sql
 ├─ scripts/
 │  ├─ subir_inventario.py     → corre en el servidor de la OFICINA, NO en Vercel
-│  └─ extraer_ventas.py       → corre en la PC de la TIENDA: ventas de A2 → /api/sync-ventas
+│  └─ extraer_ventas.py       → corre en la PC de la TIENDA (como .exe): ventas de A2 → /api/sync-ventas
 ├─ .env.example
 └─ package.json
 ```
@@ -82,12 +82,14 @@ python scripts/subir_inventario.py
 ```
 
 ### 5. Ventas para la página de reposición (opcional)
-`scripts/extraer_ventas.py` corre en la PC de la tienda (Python de 32 bits +
-`pip install pyodbc`), lee las ventas de los últimos 30 días de A2 en solo
+`scripts/extraer_ventas.py` lee las ventas de los últimos 30 días de A2 en solo
 lectura (ventas suman, devoluciones restan) y las envía a `/api/sync-ventas`
-con el `SYNC_SECRET`. Se configura con `config_ventas.ini` (copiar de
-`scripts/config_ventas.ejemplo.ini`; no se sube). Para probar sin enviar:
-`py -3-32 scripts/extraer_ventas.py --solo-archivo`. Pasos completos en
+con el `SYNC_SECRET`. En la tienda corre compilado como
+`ExtraerVentasImprimete.exe` (`scripts/compilar_extractor_ventas.bat`, con Python
+de 32 bits en la PC de desarrollo), independiente del extractor de inventario y
+con su propia tarea programada. Se configura con `config_ventas.ini` (copiar de
+`scripts/config_ventas.ejemplo.ini`; no se sube). Deja un log por día en `logs\`.
+Para probar sin enviar: `--solo-archivo`. Pasos completos en
 `docs/reposicion-despliegue.md` (Fase 2).
 
 ## Flujo completo (cómo verificar que todo está bien)
