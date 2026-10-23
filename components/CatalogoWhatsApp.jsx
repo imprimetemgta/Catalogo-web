@@ -16,6 +16,7 @@ import { LoopMark, StockGauge } from "./RefillLoop";
 import { useProductosYTasa } from "@/lib/useProductosYTasa";
 import { formatBs, formatFechaTasa } from "@/lib/moneda";
 import { porMasNuevos } from "@/lib/orden";
+import { esAConsultar, topeCarrito } from "@/lib/existencia";
 
 // Número del asesor (configurable por variable de entorno en Vercel).
 const WHATSAPP_NUMERO =
@@ -280,7 +281,9 @@ export default function CatalogoWhatsApp() {
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {productosFiltrados.map((p) => {
                 const enCarrito = carrito[p.codigo] || 0;
-                const agotado = p.existencia <= 0;
+                const consultar = esAConsultar(p);
+                const agotado = !consultar && p.existencia <= 0;
+                const tope = topeCarrito(p);
                 return (
                   <div
                     key={p.codigo}
@@ -318,13 +321,19 @@ export default function CatalogoWhatsApp() {
                           ${p.precio.toFixed(2)}
                         </span>
                         <div className="flex items-center gap-1.5">
-                          <StockGauge existencia={p.existencia} size={24} />
+                          {!consultar && (
+                            <StockGauge existencia={p.existencia} size={24} />
+                          )}
                           <span
                             className={`tabular text-xs font-medium ${
                               agotado ? "text-ink-faint" : "text-ink-muted"
                             }`}
                           >
-                            {agotado ? "Agotado" : `${p.existencia} disp.`}
+                            {consultar
+                              ? "A consultar"
+                              : agotado
+                              ? "Agotado"
+                              : `${p.existencia} disp.`}
                           </span>
                         </div>
                       </div>
@@ -339,7 +348,7 @@ export default function CatalogoWhatsApp() {
                         {enCarrito === 0 ? (
                           <button
                             disabled={agotado}
-                            onClick={() => agregar(p.codigo, p.existencia)}
+                            onClick={() => agregar(p.codigo, tope)}
                             className="w-full rounded-lg bg-brand-navy py-2 text-sm font-medium text-white transition hover:bg-[#152a63] disabled:cursor-not-allowed disabled:bg-paper-dim disabled:text-ink-faint"
                           >
                             Agregar
@@ -348,7 +357,7 @@ export default function CatalogoWhatsApp() {
                           <div className="flex items-center justify-between rounded-lg bg-paper-dim p-1">
                             <button
                               onClick={() =>
-                                cambiar(p.codigo, -1, p.existencia)
+                                cambiar(p.codigo, -1, tope)
                               }
                               aria-label="Quitar una unidad"
                               className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-ink shadow-sm"
@@ -359,8 +368,8 @@ export default function CatalogoWhatsApp() {
                               {enCarrito}
                             </span>
                             <button
-                              onClick={() => cambiar(p.codigo, 1, p.existencia)}
-                              disabled={enCarrito >= p.existencia}
+                              onClick={() => cambiar(p.codigo, 1, tope)}
+                              disabled={enCarrito >= tope}
                               aria-label="Agregar una unidad"
                               className="flex h-8 w-8 items-center justify-center rounded-md bg-white text-ink shadow-sm disabled:opacity-40"
                             >
@@ -653,7 +662,7 @@ function CarritoPanel({
                   </p>
                   <div className="mt-1 flex items-center gap-2">
                     <button
-                      onClick={() => cambiar(it.codigo, -1, it.existencia)}
+                      onClick={() => cambiar(it.codigo, -1, topeCarrito(it))}
                       aria-label="Quitar una unidad"
                       className="flex h-6 w-6 items-center justify-center rounded border border-paper-line text-ink-muted hover:border-brand-navy/40"
                     >
@@ -663,8 +672,8 @@ function CarritoPanel({
                       {it.cantidad}
                     </span>
                     <button
-                      onClick={() => cambiar(it.codigo, 1, it.existencia)}
-                      disabled={it.cantidad >= it.existencia}
+                      onClick={() => cambiar(it.codigo, 1, topeCarrito(it))}
+                      disabled={it.cantidad >= topeCarrito(it)}
                       aria-label="Agregar una unidad"
                       className="flex h-6 w-6 items-center justify-center rounded border border-paper-line text-ink-muted hover:border-brand-navy/40 disabled:opacity-40"
                     >

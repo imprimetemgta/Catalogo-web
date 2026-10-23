@@ -6,6 +6,7 @@ import { ArrowLeft, ScanLine, PackageX, Search } from "lucide-react";
 import { LoopMark, StockGauge } from "./RefillLoop";
 import { useProductosYTasa } from "@/lib/useProductosYTasa";
 import { formatBs } from "@/lib/moneda";
+import { esAConsultar } from "@/lib/existencia";
 
 // Herramienta de mostrador: apuntar el lector y que aparezca el producto,
 // sin tocar el mouse ni el teclado. Un lector de código de barras es, para
@@ -204,7 +205,8 @@ export default function EscanerCodigo() {
 }
 
 function ResultadoProducto({ producto: p, tasaBcv, imgFallo, onImgFallo }) {
-  const agotado = p.existencia <= 0;
+  const consultar = esAConsultar(p);
+  const agotado = !consultar && p.existencia <= 0;
   return (
     <div className="overflow-hidden rounded-xl border border-paper-line bg-white shadow-card">
       <div className="flex flex-col gap-6 p-6 sm:flex-row">
@@ -243,13 +245,17 @@ function ResultadoProducto({ producto: p, tasaBcv, imgFallo, onImgFallo }) {
           </div>
 
           <div className="mt-4 flex items-center gap-2">
-            <StockGauge existencia={p.existencia} size={28} />
+            {!consultar && <StockGauge existencia={p.existencia} size={28} />}
             <span
               className={`tabular text-base font-medium ${
                 agotado ? "text-ink-faint" : "text-ink-muted"
               }`}
             >
-              {agotado ? "Agotado" : `${p.existencia} disponibles`}
+              {consultar
+                ? "A consultar"
+                : agotado
+                ? "Agotado"
+                : `${p.existencia} disponibles`}
             </span>
           </div>
         </div>
